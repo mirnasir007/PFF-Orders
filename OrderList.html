@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fulfillment Entry</title>
+    <title>Order List</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Shared Styles */
         :root { --primary: #008060; --bg: #f6f6f7; --white: #ffffff; --text: #202223; --sidebar-width: 240px; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         .sidebar { width: var(--sidebar-width); background: var(--white); border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
@@ -15,28 +16,104 @@
         .menu-item:hover { background: #f1f2f3; color: var(--primary); }
         .menu-item.active { background: #edfffa; color: var(--primary); border-left: 3px solid var(--primary); font-weight: 600; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .top-bar { background: var(--white); padding: 15px 20px; border-bottom: 1px solid #e1e3e5; }
-        .content-area { flex: 1; overflow-y: auto; padding: 20px; }
         
+        /* Top Bar Layout */
+        .top-bar { 
+            background: var(--white); 
+            padding: 15px 20px; 
+            border-bottom: 1px solid #e1e3e5; 
+            display: flex; 
+            flex-wrap: wrap; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: 15px; 
+        }
+        
+        .filter-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .action-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group { display: flex; align-items: center; gap: 5px; }
+
+        /* Amount Badge */
+        .amount-display {
+            background: #e3f1df;
+            color: #005c26;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            border: 1px solid #c4f5cd;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        
+        /* Table */
         .data-table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
         .data-table th, .data-table td { padding: 12px; text-align: left; border-bottom: 1px solid #e1e3e5; vertical-align: middle; }
         .data-table th { background: #f1f2f3; font-weight: 600; color: #202223; }
         .data-table tr:hover { background: #fcfcfc; }
         
-        .btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        .btn:hover { opacity: 0.9; }
-        .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333; }
-        
-        /* Badges */
-        .badge-fulfilled { background-color: #c4f5cd; color: #005c26; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; border: 1px solid #a1e6b3; }
+        /* Images */
+        .list-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
+        .list-img:hover { transform: scale(1.1); }
 
-        /* Modal */
+        /* Status Pills */
+        .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid transparent; display: inline-block; margin-bottom: 2px;}
+        .status-pending { background: #ffebd3; color: #8a6116; }
+        .status-product-entry { background: #e3f1df; color: #202223; border: 1px solid #c4f5cd; }
+        .status-hold { background: #fff4e5; color: #663c00; border: 1px solid #fed28c; }
+        .status-other { background: #f1f2f3; color: #5c5f62; }
+
+        input, textarea { padding: 8px; border: 1px solid #babfc3; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333; }
+        .btn-sm { padding: 4px 10px; font-size: 11px; }
+        .btn-danger { background: #d82c0d; color: white; border: none; }
+        
+        /* Export Button */
+        .btn-export { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .btn-export:hover { opacity: 0.9; }
+
+        /* Pagination - Fixed at Bottom */
+        .pagination { display: none; justify-content: center; gap: 10px; padding: 15px; background: white; border-top: 1px solid #e1e3e5; position: absolute; bottom: 0; left: 0; width: 100%; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+
+        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px; position: relative; }
-        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
-        .form-group input { width: 100%; padding: 8px; border: 1px solid #babfc3; border-radius: 4px; box-sizing: border-box; }
+        .modal-close { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; }
+        
+        .checkbox-group { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; text-align: left; padding-left: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; user-select: none; }
+        .checkbox-item input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+
+        /* Gallery Modal */
+        #imagesViewModal .modal-box { max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; text-align: center; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 15px; }
+        .gallery-img { width: 100%; height: 80px; object-fit: cover; border-radius: 4px; cursor: zoom-in; border: 1px solid #eee; transition: transform 0.2s; }
+        .gallery-img:hover { transform: scale(1.05); border-color: var(--primary); }
+
+        /* Fullscreen Image Preview */
+        .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; }
+        .img-preview img { max-width:90%; max-height:85%; border-radius:4px; }
+        .preview-controls { position:absolute; top:20px; right:30px; }
+        .close-preview { color:white; font-size:35px; cursor:pointer; }
+        
+        /* Navigation Arrows */
+        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; user-select: none; background: rgba(0,0,0,0.3); border-radius: 5px; }
+        .img-nav:hover { background: rgba(0,0,0,0.6); }
+        .prev-btn { left: 20px; } .next-btn { right: 20px; }
 
         #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 16px; border-radius: 4px; z-index: 3000; }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
@@ -47,6 +124,8 @@
             body { flex-direction: column; height: auto; overflow: auto; }
             .sidebar { width: 100%; flex-direction: row; padding: 10px; overflow-x: auto; }
             .data-table { display: block; overflow-x: auto; white-space: nowrap; }
+            .top-bar { flex-direction: column; align-items: stretch; }
+            .action-section { justify-content: space-between; margin-top: 10px;}
         }
     </style>
 </head>
@@ -55,185 +134,434 @@
     <div class="sidebar">
         <div class="brand">PFF Premium Orders</div>
         <a href="index.html" class="menu-item">📦 New Orders</a>
-        <a href="OrderList.html" class="menu-item">📄 Order List</a>
-        <a href="Fulfillment.html" class="menu-item active">🚚 Fulfillment Entry</a>
+        <a href="OrderList.html" class="menu-item active">📄 Order List</a>
+        <a href="Fulfillment.html" class="menu-item">🚚 Fulfillment Entry</a>
     </div>
 
     <div class="main">
         <div class="top-bar">
-            <h3>Ready for Fulfillment</h3>
+            <!-- Left Side: Filters & Search -->
+            <div class="filter-section">
+                <div class="input-group">
+                    <input type="date" id="dateFrom" onchange="resetAndFetch()">
+                    <span>to</span>
+                    <input type="date" id="dateTo" onchange="resetAndFetch()">
+                </div>
+                <input type="text" id="listSearch" placeholder="Search saved orders..." onkeyup="filterLocalList()" style="width: 200px;">
+            </div>
+
+            <!-- Right Side: Amount & Download -->
+            <div class="action-section">
+                <div id="todayEntryAmount" class="amount-display">
+                    Entry Amount : 0
+                </div>
+                
+                <button class="btn-export" onclick="downloadExcel()">
+                    <span>⬇️</span> Excel
+                </button>
+            </div>
         </div>
 
         <div class="content-area">
-            <div id="loader" style="text-align:center;margin-top:50px;">Loading Orders...</div>
-            <div id="fulfillmentContainer"></div>
+            <div id="loader" style="text-align:center;margin-top:50px;">Loading List & Images...</div>
+            <div id="savedListContainer"></div>
+            
+            <div class="pagination" id="paginationControls" style="display:none;">
+                <button class="btn btn-secondary" id="btnPrev" onclick="changePage(-1)">Previous</button>
+                <span id="pageInfo" style="display:flex; align-items:center; font-size:12px; color:#666;">Page 1</span>
+                <button class="btn btn-secondary" id="btnNext" onclick="changePage(1)">Next</button>
+            </div>
         </div>
     </div>
 
     <div id="toast"></div>
 
-    <!-- Fulfillment Modal -->
-    <div id="fulfillModal" class="modal">
-        <div class="modal-box">
-            <span class="modal-close" onclick="closeModal()">&times;</span>
-            <h3 style="margin-bottom:15px;">Fulfill Order</h3>
-            <input type="hidden" id="fOrderId">
-            <div class="form-group">
-                <label>Tracking Number</label>
-                <input type="text" id="trackNum" placeholder="e.g. 12345678">
-            </div>
-            <div class="form-group">
-                <label>Tracking Link</label>
-                <input type="text" id="trackLink" placeholder="https://courier.com/track/...">
-            </div>
-            <div style="text-align:right; margin-top:15px;">
-                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                <button class="btn" id="btnConfirm" onclick="submitFulfillment()">Confirm</button>
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" style="z-index: 1200;">
+        <div class="modal-box" style="text-align: center; max-width: 350px;">
+            <h3 id="confirmTitle" style="margin-bottom: 10px;">Are you sure?</h3>
+            <p id="confirmMessage" style="color: #666; margin-bottom: 20px; font-size: 14px;">This action cannot be undone.</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+                <button class="btn btn-danger" id="confirmBtnAction">Yes, Delete</button>
             </div>
         </div>
     </div>
 
+    <!-- Status Modal -->
+    <div id="statusModal" class="modal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('statusModal')">&times;</span>
+            <h3 style="text-align:center; margin-bottom:15px; color:var(--primary);">Update Status</h3>
+            <input type="hidden" id="statusOrderId">
+            <div class="checkbox-group">
+                <label class="checkbox-item"><input type="checkbox" value="Confirm" class="st-chk"> Confirm</label>
+                <label class="checkbox-item"><input type="checkbox" value="Dhanmondi" class="st-chk"> Dhanmondi</label>
+                <label class="checkbox-item"><input type="checkbox" value="Banani" class="st-chk"> Banani</label>
+                <label class="checkbox-item"><input type="checkbox" value="Uttara" class="st-chk"> Uttara</label>
+                <label class="checkbox-item"><input type="checkbox" value="Courier" class="st-chk"> Courier</label>
+                <label class="checkbox-item"><input type="checkbox" value="Paid" class="st-chk"> Paid</label>
+                <label class="checkbox-item"><input type="checkbox" value="Hold" class="st-chk"> Hold</label>
+                <hr style="width:100%; border:0; border-top:1px solid #eee; margin: 5px 0;">
+                <label class="checkbox-item"><input type="checkbox" value="Product Entry" id="chkProductEntry" onchange="handleSpecialStatus()"> Product Entry (Invoice Required)</label>
+                <label class="checkbox-item"><input type="checkbox" value="Void" id="chkVoid" onchange="handleSpecialStatus()"> Void (Note Required)</label>
+            </div>
+            <button class="btn" onclick="saveStatusUpdate()" style="width:100%">Update Status</button>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div id="invoiceModal" class="modal" style="z-index: 1100;">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('invoiceModal')">&times;</span>
+            <h3 id="invModalTitle">Enter Invoice Number</h3>
+            <input type="hidden" id="invOrderId">
+            <p style="font-size:12px; color:#666;">Must be 13 digits starting with 0</p>
+            <input type="text" id="invoiceInput" placeholder="0xxxxxxxxxxxx" maxlength="13">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn btn-danger" id="btnDeleteInv" onclick="deleteInvoice()" style="display:none; flex:1;">Delete</button>
+                <button class="btn" onclick="confirmInvoice()" style="flex:2;">Save Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Note Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('noteModal')">&times;</span>
+            <h3>Update Note</h3>
+            <input type="hidden" id="noteOrderId">
+            <textarea id="noteInput" rows="4"></textarea>
+            <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                <button class="btn btn-secondary" onclick="deleteNote()">Delete</button>
+                <button class="btn" onclick="saveNote()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Amount Modal -->
+    <div id="amountModal" class="modal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('amountModal')">&times;</span>
+            <h3>Update Amount</h3>
+            <input type="hidden" id="amountOrderId">
+            <input type="number" id="amountInput" placeholder="Enter Amount" style="margin: 10px 0;">
+            <button class="btn" onclick="saveAmount()" style="width:100%">Save Amount</button>
+        </div>
+    </div>
+
+    <!-- Gallery Modal -->
+    <div id="imagesViewModal" class="modal">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('imagesViewModal')">&times;</span>
+            <h3 id="galleryTitle">Order Images</h3>
+            <div id="galleryContainer" class="gallery-grid"></div>
+        </div>
+    </div>
+
+    <!-- Full Image Preview with Navigation -->
+    <div id="imgPreview" class="img-preview" onclick="if(event.target === this) this.style.display='none'">
+        <div class="preview-controls">
+            <span class="close-preview" onclick="document.getElementById('imgPreview').style.display='none'">&times;</span>
+        </div>
+        <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1)">&#10094;</span>
+        <img id="previewImgSrc" src="">
+        <span class="img-nav next-btn" id="nextBtn" onclick="navigatePreview(1)">&#10095;</span>
+    </div>
+
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEf-503JgVRQGLSaFFz8CHjSbJlmTX-UNnyjUiS6yyjk-JGqavucbmnnc_do9C69rb/exec"; 
+        
+        let savedList = [], savedListImages = {}, pendingStatusUpdate = null;
+        let isEditingInvoice = false;
+        let currentPreviewImages = [], currentPreviewIndex = 0;
+        let pendingConfirmAction = null;
+        let currentPage = 1;
+        let hasMorePages = false;
 
-        window.onload = function() { loadFulfillmentOrders(); };
+        window.onload = function() { fetchSheetOrders(1); };
 
-        async function loadFulfillmentOrders() {
+        function resetAndFetch() {
+            currentPage = 1;
+            fetchSheetOrders(1);
+        }
+
+        async function fetchSheetOrders(page) {
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('savedListContainer').innerHTML = '';
+            document.getElementById('paginationControls').style.display = 'none';
+            
+            let dateFrom = document.getElementById('dateFrom').value;
+            let dateTo = document.getElementById('dateTo').value;
+            let url = `${SCRIPT_URL}?action=getSheetOrders&page=${page}`;
+            if(dateFrom && dateTo) url += `&dateFrom=${dateFrom}&dateTo=${dateTo}`;
+
             try {
-                let res = await fetch(`${SCRIPT_URL}?action=getFulfillmentOrders`);
+                let res = await fetch(url);
                 let data = await res.json();
                 document.getElementById('loader').style.display = 'none';
                 
-                if (data.status === 'success') {
-                    renderTable(data.orders);
-                } else {
-                    document.getElementById('fulfillmentContainer').innerHTML = `<div style="text-align:center;color:red;">${data.message}</div>`;
+                if(data.status === 'success') {
+                    savedList = data.orders;
+                    savedListImages = data.images || {};
+                    hasMorePages = data.hasMore;
+                    currentPage = page;
+                    renderSavedList(savedList);
+                    calculateTodayEntryAmount(savedList);
+                    updatePaginationUI();
                 }
-            } catch(e) {
-                showToast("Connection Error");
-            }
+            } catch(e) { showToast("Error loading list"); }
         }
 
-        // Updated Date Formatter with Day
+        // IMPROVED: Calculate Sum of 'Product Entry' (Date check removed)
+        function calculateTodayEntryAmount(list) {
+            let total = 0;
+            list.forEach(o => {
+                // Check Condition: Status contains "Product Entry" ONLY
+                if (o.status && o.status.toLowerCase().includes('product entry')) {
+                        let cleanAmount = String(o.amount).replace(/[^0-9.-]+/g,"");
+                        total += (parseFloat(cleanAmount) || 0);
+                }
+            });
+            document.getElementById('todayEntryAmount').innerText = 'Entry Amount : ' + total.toLocaleString();
+        }
+
+        function updatePaginationUI() {
+            const controls = document.getElementById('paginationControls');
+            const prev = document.getElementById('btnPrev');
+            const next = document.getElementById('btnNext');
+            const info = document.getElementById('pageInfo');
+            controls.style.display = 'flex';
+            prev.disabled = currentPage === 1;
+            next.disabled = !hasMorePages;
+            info.innerText = `Page ${currentPage}`;
+        }
+
+        function changePage(dir) {
+            if (dir === -1 && currentPage > 1) fetchSheetOrders(currentPage - 1);
+            if (dir === 1 && hasMorePages) fetchSheetOrders(currentPage + 1);
+        }
+
         function formatDateSafe(dateStr) {
             if(!dateStr) return "-";
-            if(typeof dateStr === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
-                // If already formatted, just parse to get day
-                let parts = dateStr.split('/');
-                let d = new Date(parts[2], parts[1]-1, parts[0]);
-                let day = d.toLocaleDateString('en-US', { weekday: 'long' });
-                return `<div>${dateStr}</div><div style="font-size:11px;color:#6d7175;margin-top:2px;">${day}</div>`;
-            }
-            
-            // If ISO date
+            if(typeof dateStr === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
             const d = new Date(dateStr);
             if(isNaN(d.getTime())) return dateStr; 
-            let date = d.toLocaleDateString("en-GB"); 
-            let day = d.toLocaleDateString("en-US", { weekday: 'long' });
-            return `<div>${date}</div><div style="font-size:11px;color:#6d7175;margin-top:2px;">${day}</div>`;
+            return d.toLocaleDateString("en-GB"); 
         }
 
-        function renderTable(orders) {
-            if(orders.length === 0) {
-                document.getElementById('fulfillmentContainer').innerHTML = '<div style="text-align:center;padding:20px;">No orders pending fulfillment.</div>';
+        function renderSavedList(list) {
+            if(list.length === 0) {
+                document.getElementById('savedListContainer').innerHTML = '<div style="text-align:center; padding:20px;">No saved orders yet.</div>';
                 return;
             }
+            let html = '<table class="data-table"><thead><tr><th>Date</th><th>Img</th><th>ID</th><th>Name</th><th>Number</th><th>Address</th><th>Amount</th><th>Note</th><th>Status</th><th>Invoice</th></tr></thead><tbody>';
+            list.forEach(o => {
+                let s = o.status || "";
+                let statusClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
+                                  (s.toLowerCase().includes('hold') ? 'status-hold' : 
+                                  (s === 'Pending' ? 'status-pending' : 'status-other'));
+                
+                let noteDisplay = o.note ? o.note : '+ Add Note';
+                let noteStyle = o.note ? 'color:#333;' : 'color:#008060; font-weight:bold; cursor:pointer;';
+                let invDisplay = o.invoice ? `${o.invoice} <span style="cursor:pointer; color:#008060; margin-left:5px;" onclick="openInvoiceModal('${o.id}', '${o.invoice}', true)">✎</span>` : '-';
 
-            let html = `
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Order ID</th>
-                        <th>Name</th>
-                        <th>Invoice No</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>`;
-            
-            orders.forEach(o => {
-                // Check Shopify Status
-                let mark = "";
-                let btnText = "Fulfill";
-                if(o.shopify_status === 'fulfilled') {
-                    mark = `<span class="badge-fulfilled">Shopify Fulfilled</span>`;
-                    btnText = "Mark Done"; // Change button text if already done on Shopify
+                // --- SHOW BUTTON INSTEAD OF DIRECT IMAGES ---
+                let imgHtml = '-';
+                let imgs = savedListImages[o.id] || [];
+                if(imgs.length > 0) {
+                    let btnText = imgs.length === 1 ? 'Show (1)' : `Show (${imgs.length})`;
+                    imgHtml = `<button class="btn btn-secondary btn-sm" onclick="openGallery('${o.id}')">${btnText}</button>`;
                 }
 
-                html += `
-                <tr>
-                    <td>${formatDateSafe(o.date)}</td>
-                    <td style="font-weight:bold;">
-                        #${o.id}
-                        ${mark}
-                    </td>
+                let dateDisplay = formatDateSafe(o.date);
+                let dayName = "";
+                // Logic to get Day Name from mixed formats
+                let d = null;
+                if(typeof o.date === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(o.date)) {
+                   let p = o.date.split('/'); d = new Date(p[2], p[1]-1, p[0]);
+                } else { d = new Date(o.date); }
+
+                if (d && !isNaN(d.getTime())) dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+                let dateHtml = `<div>${dateDisplay}</div>`;
+                if(dayName) dateHtml += `<div style="font-size: 11px; color: #6d7175; margin-top: 2px;">${dayName}</div>`;
+
+                html += `<tr>
+                    <td>${dateHtml}</td>
+                    <td>${imgHtml}</td>
+                    <td style="font-weight:bold;">#${o.id}</td>
                     <td>${o.name}</td>
-                    <td style="font-weight:bold; color:#008060;">${o.invoice || '-'}</td>
-                    <td>
-                        <button class="btn btn-sm" onclick="openFulfillModal('${o.id}')">${btnText}</button>
-                    </td>
+                    <td>${o.number}</td>
+                    <td style="max-width:150px;white-space:normal;">${o.address}</td>
+                    <td onclick="openAmountModal('${o.id}', '${o.amount}')" style="cursor:pointer; color:#008060; font-weight:bold;">${o.amount}</td>
+                    <td onclick="openNoteModal('${o.id}', '${o.note || ''}')" style="${noteStyle}">${noteDisplay}</td>
+                    <td><span class="status-pill ${statusClass}" onclick="openStatusModal('${o.id}', '${o.status}')">${o.status}</span></td>
+                    <td>${invDisplay}</td>
                 </tr>`;
             });
-            html += `</tbody></table>`;
-            document.getElementById('fulfillmentContainer').innerHTML = html;
+            html += '</tbody></table>';
+            document.getElementById('savedListContainer').innerHTML = html;
         }
 
-        function openFulfillModal(id) {
-            document.getElementById('fOrderId').value = id;
-            document.getElementById('trackNum').value = '';
-            document.getElementById('trackLink').value = '';
-            document.getElementById('fulfillModal').style.display = 'flex';
+        function filterLocalList() {
+            let q = document.getElementById('listSearch').value.toLowerCase();
+            let filtered = savedList.filter(o => String(o.id).includes(q) || String(o.number).includes(q) || o.name.toLowerCase().includes(q));
+            renderSavedList(filtered);
         }
 
-        function closeModal() {
-            document.getElementById('fulfillModal').style.display = 'none';
+        // Preview & Navigation
+        function showPreview(images, index) {
+            if(typeof images === 'string') { currentPreviewImages = [images]; currentPreviewIndex = 0; }
+            else { currentPreviewImages = images; currentPreviewIndex = index; }
+            updatePreviewImage(); document.getElementById('imgPreview').style.display = 'flex';
+        }
+        function navigatePreview(dir) {
+            let newIndex = currentPreviewIndex + dir;
+            if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; updatePreviewImage(); }
+        }
+        function updatePreviewImage() {
+            document.getElementById('previewImgSrc').src = currentPreviewImages[currentPreviewIndex];
+            const prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
+            if(currentPreviewImages.length > 1) {
+                prev.style.display = currentPreviewIndex > 0 ? 'block' : 'none';
+                next.style.display = currentPreviewIndex < currentPreviewImages.length - 1 ? 'block' : 'none';
+            } else { prev.style.display = 'none'; next.style.display = 'none'; }
+        }
+        
+        // Gallery Modal Open
+        function openGallery(orderId) {
+            let imgs = savedListImages[orderId] || [];
+            let container = document.getElementById('galleryContainer');
+            container.innerHTML = '';
+            document.getElementById('galleryTitle').innerText = `Images for Order #${orderId}`;
+            
+            imgs.forEach((src, index) => {
+                let img = document.createElement('img');
+                img.src = src;
+                img.className = 'gallery-img';
+                img.onclick = function() { showPreview(imgs, index); };
+                container.appendChild(img);
+            });
+            document.getElementById('imagesViewModal').style.display = 'flex';
         }
 
-        async function submitFulfillment() {
-            let id = document.getElementById('fOrderId').value;
-            let num = document.getElementById('trackNum').value;
-            let link = document.getElementById('trackLink').value;
-            let btn = document.getElementById('btnConfirm');
-
-            // If already fulfilled on Shopify, tracking might not be needed strictly for sheet update, but good to have.
-            // Assuming we still require tracking number for record.
-            if(!num) { showToast("Tracking Number required"); return; }
-
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-
-            let qs = new URLSearchParams({
-                action: 'fulfillOrder',
-                orderId: id,
-                trackingNum: num,
-                trackingUrl: link
-            }).toString();
-
-            try {
-                let res = await fetch(SCRIPT_URL + '?' + qs, { method: 'GET', redirect: 'follow' });
-                let data = await res.json();
-
-                if (data.status === 'success') {
-                    showToast(data.message);
-                    closeModal();
-                    loadFulfillmentOrders(); 
-                } else {
-                    showToast("Error: " + data.message);
-                }
-            } catch(e) {
-                showToast("Request Failed");
+        // --- INVOICE, STATUS, NOTE, AMOUNT ---
+        function openInvoiceModal(id, currentInv, isEditMode = false) {
+            document.getElementById('invOrderId').value = id;
+            document.getElementById('invoiceInput').value = isEditMode ? currentInv : '';
+            isEditingInvoice = isEditMode;
+            document.getElementById('invModalTitle').innerText = isEditMode ? 'Edit Invoice' : 'Enter Invoice Number';
+            document.getElementById('btnDeleteInv').style.display = isEditMode ? 'block' : 'none';
+            document.getElementById('invoiceModal').style.display = 'flex';
+        }
+        function deleteInvoice() {
+            openConfirmModal("Are you sure?", function() { updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE'); closeModal('invoiceModal'); });
+        }
+        function confirmInvoice() {
+            let inv = document.getElementById('invoiceInput').value, id = document.getElementById('invOrderId').value;
+            if(!/^\d{13}$/.test(inv)) { showToast("13 digits required."); return; }
+            if(isEditingInvoice) { updateSheet(id, 'invoice', inv); closeModal('invoiceModal'); }
+            else if(pendingStatusUpdate) {
+                let final = "Product Entry";
+                if(pendingStatusUpdate.statuses.length > 0) final = pendingStatusUpdate.statuses.join(', ') + ", Product Entry";
+                updateSheet(pendingStatusUpdate.id, 'status', final, inv); closeModal('invoiceModal'); pendingStatusUpdate = null;
             }
-            btn.innerText = "Confirm";
-            btn.disabled = false;
+        }
+        function openStatusModal(id, cur) {
+            document.getElementById('statusOrderId').value = id;
+            document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
+            document.getElementById('chkProductEntry').checked = false;
+            document.getElementById('chkVoid').checked = false;
+            if(cur) {
+                let parts = cur.split(',').map(s => s.trim());
+                document.querySelectorAll('.st-chk').forEach(c => { if(parts.includes(c.value)) c.checked = true; });
+            }
+            document.getElementById('statusModal').style.display = 'flex';
+        }
+        function handleSpecialStatus() {}
+        function saveStatusUpdate() {
+            let id = document.getElementById('statusOrderId').value, statuses = [];
+            document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
+            if(document.getElementById('chkProductEntry').checked) {
+                closeModal('statusModal'); openInvoiceModal(id, '', false);
+                pendingStatusUpdate = { id: id, statuses: statuses }; return;
+            }
+            if(document.getElementById('chkVoid').checked) {
+                closeModal('statusModal'); openNoteModal(id, '', true);
+                statuses.push("Void"); updateSheet(id, 'status', statuses.join(', ')); return;
+            }
+            if(statuses.length > 0) { updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
+            else showToast("Select status");
+        }
+        function openNoteModal(id, note) {
+            document.getElementById('noteOrderId').value = id;
+            document.getElementById('noteInput').value = note;
+            document.getElementById('noteModal').style.display = 'flex';
+        }
+        function saveNote() { updateSheet(document.getElementById('noteOrderId').value, 'note', document.getElementById('noteInput').value); closeModal('noteModal'); }
+        function deleteNote() { updateSheet(document.getElementById('noteOrderId').value, 'note', ''); closeModal('noteModal'); }
+        function openAmountModal(id, amount) {
+            document.getElementById('amountOrderId').value = id;
+            document.getElementById('amountInput').value = amount;
+            document.getElementById('amountModal').style.display = 'flex';
+        }
+        function saveAmount() {
+            let id = document.getElementById('amountOrderId').value;
+            let amount = document.getElementById('amountInput').value;
+            if(!amount) { showToast("Enter amount"); return; }
+            updateSheet(id, 'amount', amount);
+            closeModal('amountModal');
         }
 
-        function showToast(msg) {
-            var x = document.getElementById("toast");
-            x.className = "show";
-            x.innerText = msg;
-            setTimeout(function(){ x.className = x.className.replace("show", ""); }, 3000);
+        async function updateSheet(id, type, value, invoice) {
+            showToast("Updating...");
+            let url = `${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=${type}&value=${encodeURIComponent(value)}`;
+            if(invoice) url += `&invoice=${invoice}`;
+            try { await fetch(url, {method:'GET', redirect: 'follow'}); showToast("Updated!"); fetchSheetOrders(currentPage); } catch(e) { showToast("Failed"); }
         }
+
+        // CSV Export
+        async function downloadExcel() {
+            showToast("Preparing download...");
+            let dateFrom = document.getElementById('dateFrom').value;
+            let dateTo = document.getElementById('dateTo').value;
+            let url = `${SCRIPT_URL}?action=getSheetOrders&export=true`;
+            if(dateFrom && dateTo) url += `&dateFrom=${dateFrom}&dateTo=${dateTo}`;
+            try {
+                let res = await fetch(url);
+                let data = await res.json();
+                if(data.status === 'success' && data.orders.length > 0) {
+                    let csvContent = "Date,Order ID,Name,Number,Address,Amount,Note,Status,Invoice\n";
+                    data.orders.forEach(o => {
+                        let row = [
+                            formatDateSafe(o.date), o.id, `"${o.name}"`, `'${o.number}`, 
+                            `"${o.address.replace(/\n/g, ' ')}"`, o.amount, `"${o.note || ''}"`, 
+                            `"${o.status || ''}"`, `'${o.invoice || ''}`
+                        ].join(",");
+                        csvContent += row + "\n";
+                    });
+                    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    let link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = "order_list.csv";
+                    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+                    showToast("Download started!");
+                } else { showToast("No data"); }
+            } catch(e) { showToast("Download failed"); }
+        }
+
+        // Confirmation Modal
+        function openConfirmModal(msg, callback) {
+            document.getElementById('confirmMessage').innerText = msg;
+            pendingConfirmAction = callback;
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+        document.getElementById('confirmBtnAction').onclick = function() {
+            if(pendingConfirmAction) pendingConfirmAction(); closeModal('confirmModal');
+        };
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function showToast(msg) { let x=document.getElementById("toast"); x.className="show"; x.innerText=msg; setTimeout(()=>{x.className=x.className.replace("show","")},3000); }
     </script>
 </body>
 </html>
