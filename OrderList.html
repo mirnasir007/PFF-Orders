@@ -94,16 +94,12 @@
         .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; user-select: none; }
         .checkbox-item input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
 
-        /* Gallery Modal Styles (UPDATED) */
+        /* Gallery Modal Styles */
         #imagesViewModal .modal-box { max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; text-align: center; }
-        
         .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; margin-top: 15px; }
-        
         .gallery-item { display: flex; flex-direction: column; align-items: center; background: #fff; }
-        
         .gallery-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; cursor: zoom-in; border: 1px solid #eee; transition: transform 0.2s; }
         .gallery-img:hover { transform: scale(1.05); border-color: var(--primary); }
-        
         .gallery-meta { width: 100%; text-align: center; margin-top: 4px; font-size: 11px; color: #333; line-height: 1.3; }
         .variant-tag { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 2px; color: #555; font-size: 10px; word-wrap: break-word; max-width: 100%; }
 
@@ -316,11 +312,9 @@
             } catch(e) { showToast("Error loading list"); }
         }
 
-        // IMPROVED: Calculate Sum of 'Product Entry' (Date check removed)
         function calculateTodayEntryAmount(list) {
             let total = 0;
             list.forEach(o => {
-                // Check Condition: Status contains "Product Entry" ONLY
                 if (o.status && o.status.toLowerCase().includes('product entry')) {
                         let cleanAmount = String(o.amount).replace(/[^0-9.-]+/g,"");
                         total += (parseFloat(cleanAmount) || 0);
@@ -369,7 +363,6 @@
                 let noteStyle = o.note ? 'color:#333;' : 'color:#008060; font-weight:bold; cursor:pointer;';
                 let invDisplay = o.invoice ? `${o.invoice} <span style="cursor:pointer; color:#008060; margin-left:5px;" onclick="openInvoiceModal('${o.id}', '${o.invoice}', true)">✎</span>` : '-';
 
-                // --- SHOW BUTTON INSTEAD OF DIRECT IMAGES ---
                 let imgHtml = '-';
                 let imgs = savedListImages[o.id] || [];
                 if(imgs.length > 0) {
@@ -379,7 +372,6 @@
 
                 let dateDisplay = formatDateSafe(o.date);
                 let dayName = "";
-                // Logic to get Day Name from mixed formats
                 let d = null;
                 if(typeof o.date === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(o.date)) {
                    let p = o.date.split('/'); d = new Date(p[2], p[1]-1, p[0]);
@@ -412,7 +404,6 @@
             renderSavedList(filtered);
         }
 
-        // Preview & Navigation
         function showPreview(images, index) {
             if(typeof images === 'string') { currentPreviewImages = [images]; currentPreviewIndex = 0; }
             else { currentPreviewImages = images; currentPreviewIndex = index; }
@@ -431,14 +422,12 @@
             } else { prev.style.display = 'none'; next.style.display = 'none'; }
         }
         
-        // Gallery Modal Open (UPDATED)
         function openGallery(orderId) {
             let rawItems = savedListImages[orderId] || [];
             let container = document.getElementById('galleryContainer');
             container.innerHTML = '';
             document.getElementById('galleryTitle').innerText = `Images for Order #${orderId}`;
             
-            // Extract pure URLs for the slider preview
             let imageUrls = rawItems.map(item => (typeof item === 'object' && item.src) ? item.src : item);
 
             rawItems.forEach((item, index) => {
@@ -469,7 +458,6 @@
             document.getElementById('imagesViewModal').style.display = 'flex';
         }
 
-        // --- INVOICE, STATUS, NOTE, AMOUNT ---
         function openInvoiceModal(id, currentInv, isEditMode = false) {
             document.getElementById('invOrderId').value = id;
             document.getElementById('invoiceInput').value = isEditMode ? currentInv : '';
@@ -503,9 +491,17 @@
             document.getElementById('statusModal').style.display = 'flex';
         }
         function handleSpecialStatus() {}
-        function saveStatusUpdate() {
+        
+        // --- UPDATED SAVE STATUS FUNCTION ---
+        async function saveStatusUpdate() {
             let id = document.getElementById('statusOrderId').value, statuses = [];
             document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
+            
+            // NEW: Check if "Paid" is selected and trigger backend update
+            if(statuses.includes("Paid")) {
+                await markShopifyPaid(id);
+            }
+
             if(document.getElementById('chkProductEntry').checked) {
                 closeModal('statusModal'); openInvoiceModal(id, '', false);
                 pendingStatusUpdate = { id: id, statuses: statuses }; return;
@@ -517,6 +513,31 @@
             if(statuses.length > 0) { updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
             else showToast("Select status");
         }
+
+        // --- NEW HELPER TO CALL BACKEND FOR PAID STATUS ---
+        async function markShopifyPaid(orderId) {
+            showToast("Syncing with Shopify..."); // Ager "Marking as Paid..." er bodole
+            try {
+                let url = `${SCRIPT_URL}?action=markShopifyPaid&orderId=${orderId}`;
+                let res = await fetch(url);
+                let data = await res.json();
+                if(data.status === 'success') {
+                    showToast("✅ Shopify: " + data.message);
+                }
+                else if(data.message.includes("Already Paid")) {
+                    showToast("ℹ️ Order already paid");
+                }
+                else {
+                    // Show exact error from Shopify to debug
+                    showToast("⚠️ Shopify Failed: " + data.message.substring(0, 30) + "...");
+                    console.error("Shopify Error Full:", data.message);
+                }
+            } catch(e) {
+                console.error(e);
+                showToast("⚠️ Network Error");
+            }
+        }
+
         function openNoteModal(id, note) {
             document.getElementById('noteOrderId').value = id;
             document.getElementById('noteInput').value = note;
@@ -544,13 +565,14 @@
             try { await fetch(url, {method:'GET', redirect: 'follow'}); showToast("Updated!"); fetchSheetOrders(currentPage); } catch(e) { showToast("Failed"); }
         }
 
-        // --- NEW CSV EXPORT FUNCTION (ROBUST) ---
         function escapeCsv(value) {
             if (value === null || value === undefined) return '""';
             let stringValue = String(value);
-            // Escape double quotes by doubling them
+            // Replace double quotes with two double quotes
             stringValue = stringValue.replace(/"/g, '""');
-            // Wrap in double quotes
+            // Remove newlines to prevent row breaking
+            stringValue = stringValue.replace(/[\r\n]+/g, " ");
+            // Always wrap in double quotes
             return `"${stringValue}"`;
         }
 
@@ -570,12 +592,12 @@
                             escapeCsv(formatDateSafe(o.date)),
                             escapeCsv(o.id),
                             escapeCsv(o.name),
-                            escapeCsv("'" + o.number), // Quote number to prevent scientific notation
-                            escapeCsv(o.address.replace(/\n/g, ' ')), // Remove newlines from address
+                            escapeCsv("'" + o.number), 
+                            escapeCsv(o.address), // Newlines removed inside escapeCsv
                             escapeCsv(o.amount),
                             escapeCsv(o.note || ''),
                             escapeCsv(o.status || ''),
-                            escapeCsv("'" + (o.invoice || '')) // Quote invoice
+                            escapeCsv("'" + (o.invoice || '')) 
                         ].join(",");
                         csvContent += row + "\n";
                     });
@@ -589,7 +611,6 @@
             } catch(e) { showToast("Download failed"); }
         }
 
-        // Confirmation Modal
         function openConfirmModal(msg, callback) {
             document.getElementById('confirmMessage').innerText = msg;
             pendingConfirmAction = callback;
