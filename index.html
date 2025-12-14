@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Orders</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>PFF Premium Store Manager</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #008060; --bg: #f6f6f7; --white: #ffffff; --text: #202223; --sidebar-width: 240px; }
@@ -46,6 +45,9 @@
         .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
         .p-img:hover { transform: scale(1.05); }
         .variant-text { font-size: 10px; color: #555; margin-top: 2px; line-height: 1.2; word-wrap: break-word; max-width: 100%; text-align: center; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px; }
+        /* NEW: Vendor Text Style */
+        .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
         .pagination { display: flex; justify-content: center; gap: 10px; padding: 20px; }
         /* Modal Styles */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
@@ -87,7 +89,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="brand">PFF Premium Orders</div>
+        <div class="brand">PFF Store</div>
         <a href="index.html" class="menu-item active">📦 New Orders</a>
         <a href="OrderList.html" class="menu-item">📄 Order List</a>
         <a href="Fulfillment.html" class="menu-item">🚚 Fulfillment Entry</a>
@@ -257,16 +259,23 @@
                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                         let clickHandler = (images[item.product_id]) ? `onclick="showPreview(${allImagesStr}, ${imgIndex++})"` : '';
                         
-                        // NEW: VARIANT TEXT LOGIC
+                        // VARIANT TEXT
                         let variantInfo = '';
                         if (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== '') {
                             variantInfo = `<div class="variant-text">${item.variant_title}</div>`;
+                        }
+
+                        // NEW: VENDOR TEXT
+                        let vendorInfo = '';
+                        if (item.vendor) {
+                            vendorInfo = `<div class="vendor-text">${item.vendor}</div>`;
                         }
 
                         productHtml += `<div class="p-item">
                             <img src="${img}" class="p-img" ${clickHandler}>
                             <div style="font-weight:600; font-size:12px; margin-top:3px;">${item.quantity}x</div>
                             ${variantInfo}
+                            ${vendorInfo}
                         </div>`;
                     });
                 }
@@ -470,6 +479,3 @@
     </script>
 </body>
 </html>
-
-
-
