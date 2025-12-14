@@ -294,11 +294,22 @@
                      downloadBtn = `<button class="btn-outline" onclick='downloadImages(${JSON.stringify(imageUrls)})'>Download All Images</button>`;
                 }
 
+                // DATE FIX: dd/mm/yyyy and Day Name
+                const d = new Date(order.created_at);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                const formattedDate = `${day}/${month}/${year}`;
+                const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+
                 html += `<div class="order-card">
                     <div class="order-header">
                         <div>
                             <div class="order-id">#${order.order_number}</div>
-                            <div class="order-date">${new Date(order.created_at).toLocaleDateString()}</div>
+                            <div class="order-date">
+                                <div>${formattedDate}</div>
+                                <div style="font-size: 11px; color: #6d7175; margin-top: 2px;">${dayName}</div>
+                            </div>
                         </div>
                         <div class="order-actions">
                             <div class="price-tag">${order.total_price}</div>
