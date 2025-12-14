@@ -65,10 +65,6 @@
         .data-table th { background: #f1f2f3; font-weight: 600; color: #202223; }
         .data-table tr:hover { background: #fcfcfc; }
         
-        /* Images */
-        .list-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
-        .list-img:hover { transform: scale(1.1); }
-
         /* Status Pills */
         .status-pill { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid transparent; display: inline-block; margin-bottom: 2px;}
         .status-pending { background: #ffebd3; color: #8a6116; }
@@ -98,11 +94,18 @@
         .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; user-select: none; }
         .checkbox-item input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
 
-        /* Gallery Modal */
+        /* Gallery Modal Styles (UPDATED) */
         #imagesViewModal .modal-box { max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; text-align: center; }
-        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 15px; }
-        .gallery-img { width: 100%; height: 80px; object-fit: cover; border-radius: 4px; cursor: zoom-in; border: 1px solid #eee; transition: transform 0.2s; }
+        
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 15px; margin-top: 15px; }
+        
+        .gallery-item { display: flex; flex-direction: column; align-items: center; background: #fff; }
+        
+        .gallery-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; cursor: zoom-in; border: 1px solid #eee; transition: transform 0.2s; }
         .gallery-img:hover { transform: scale(1.05); border-color: var(--primary); }
+        
+        .gallery-meta { width: 100%; text-align: center; margin-top: 4px; font-size: 11px; color: #333; line-height: 1.3; }
+        .variant-tag { background: #f4f4f4; padding: 2px 5px; border-radius: 4px; display: inline-block; margin-top: 2px; color: #555; font-size: 10px; word-wrap: break-word; max-width: 100%; }
 
         /* Fullscreen Image Preview */
         .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; }
@@ -428,19 +431,40 @@
             } else { prev.style.display = 'none'; next.style.display = 'none'; }
         }
         
-        // Gallery Modal Open
+        // Gallery Modal Open (UPDATED)
         function openGallery(orderId) {
-            let imgs = savedListImages[orderId] || [];
+            let rawItems = savedListImages[orderId] || [];
             let container = document.getElementById('galleryContainer');
             container.innerHTML = '';
             document.getElementById('galleryTitle').innerText = `Images for Order #${orderId}`;
             
-            imgs.forEach((src, index) => {
+            // Extract pure URLs for the slider preview
+            let imageUrls = rawItems.map(item => (typeof item === 'object' && item.src) ? item.src : item);
+
+            rawItems.forEach((item, index) => {
+                let src = (typeof item === 'object' && item.src) ? item.src : item;
+                let variant = (typeof item === 'object' && item.variant && item.variant !== 'Default Title') ? item.variant : '';
+                let qty = (typeof item === 'object' && item.quantity) ? `${item.quantity}x` : '';
+
+                let div = document.createElement('div');
+                div.className = 'gallery-item';
+
                 let img = document.createElement('img');
                 img.src = src;
                 img.className = 'gallery-img';
-                img.onclick = function() { showPreview(imgs, index); };
-                container.appendChild(img);
+                img.onclick = function() { showPreview(imageUrls, index); };
+
+                let meta = document.createElement('div');
+                meta.className = 'gallery-meta';
+                
+                let metaHtml = '';
+                if(qty) metaHtml += `<div style="font-weight:600;">${qty}</div>`;
+                if(variant) metaHtml += `<div class="variant-tag">${variant}</div>`;
+                meta.innerHTML = metaHtml || '<div>-</div>';
+
+                div.appendChild(img);
+                div.appendChild(meta);
+                container.appendChild(div);
             });
             document.getElementById('imagesViewModal').style.display = 'flex';
         }
@@ -520,7 +544,16 @@
             try { await fetch(url, {method:'GET', redirect: 'follow'}); showToast("Updated!"); fetchSheetOrders(currentPage); } catch(e) { showToast("Failed"); }
         }
 
-        // CSV Export
+        // --- NEW CSV EXPORT FUNCTION (ROBUST) ---
+        function escapeCsv(value) {
+            if (value === null || value === undefined) return '""';
+            let stringValue = String(value);
+            // Escape double quotes by doubling them
+            stringValue = stringValue.replace(/"/g, '""');
+            // Wrap in double quotes
+            return `"${stringValue}"`;
+        }
+
         async function downloadExcel() {
             showToast("Preparing download...");
             let dateFrom = document.getElementById('dateFrom').value;
@@ -534,9 +567,15 @@
                     let csvContent = "Date,Order ID,Name,Number,Address,Amount,Note,Status,Invoice\n";
                     data.orders.forEach(o => {
                         let row = [
-                            formatDateSafe(o.date), o.id, `"${o.name}"`, `'${o.number}`, 
-                            `"${o.address.replace(/\n/g, ' ')}"`, o.amount, `"${o.note || ''}"`, 
-                            `"${o.status || ''}"`, `'${o.invoice || ''}`
+                            escapeCsv(formatDateSafe(o.date)),
+                            escapeCsv(o.id),
+                            escapeCsv(o.name),
+                            escapeCsv("'" + o.number), // Quote number to prevent scientific notation
+                            escapeCsv(o.address.replace(/\n/g, ' ')), // Remove newlines from address
+                            escapeCsv(o.amount),
+                            escapeCsv(o.note || ''),
+                            escapeCsv(o.status || ''),
+                            escapeCsv("'" + (o.invoice || '')) // Quote invoice
                         ].join(",");
                         csvContent += row + "\n";
                     });
