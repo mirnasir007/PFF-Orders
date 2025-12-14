@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PFF - Order List</title>
+    <title>Order List</title>
+    <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Shared Styles */
@@ -114,7 +115,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="brand">PFF Store</div>
+        <div class="brand">PFF Premium Orders</div>
         <a href="index.html" class="menu-item">📦 New Orders</a>
         <a href="OrderList.html" class="menu-item active">📄 Order List</a>
         <a href="Fulfillment.html" class="menu-item">🚚 Fulfillment Entry</a>
@@ -536,4 +537,5 @@
         function showToast(msg) { let x=document.getElementById("toast"); x.className="show"; x.innerText=msg; setTimeout(()=>{x.className=x.className.replace("show","")},3000); }
     </script>
 </body>
+
 </html>
