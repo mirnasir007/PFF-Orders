@@ -7,97 +7,196 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #008060; --bg: #f6f6f7; --white: #ffffff; --text: #202223; --sidebar-width: 240px; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: var(--sidebar-width); background: var(--white); border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
-        .brand { font-size: 20px; font-weight: 700; color: var(--primary); padding: 0 20px 20px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
-        .menu-item { padding: 12px 20px; cursor: pointer; font-weight: 500; color: #5c5f62; display: flex; align-items: center; gap: 10px; transition: 0.2s; text-decoration: none; }
-        .menu-item:hover { background: #f1f2f3; color: var(--primary); }
-        .menu-item.active { background: #edfffa; color: var(--primary); font-weight: 600; }
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .top-bar { background: var(--white); padding: 15px 20px; border-bottom: 1px solid #e1e3e5; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-        .input-group { display: flex; align-items: center; gap: 5px; }
-        input, select { padding: 8px 12px; border: 1px solid #babfc3; border-radius: 4px; font-size: 14px; outline: none; }
-        input:focus { border-color: var(--primary); }
-        .btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
-        .btn:hover { background: #006e52; }
-        .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333; }
-        .btn-secondary:hover { background: #f6f6f7; }
+        :root { --primary: #008060;
+        --bg: #f6f6f7; --white: #ffffff; --text: #202223; --sidebar-width: 240px; }
+        body { margin: 0;
+        font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden;
+        }
+        .sidebar { width: var(--sidebar-width); background: var(--white); border-right: 1px solid #e1e3e5; display: flex;
+        flex-direction: column; padding: 20px 0; flex-shrink: 0; }
+        .brand { font-size: 20px;
+        font-weight: 700; color: var(--primary); padding: 0 20px 20px; border-bottom: 1px solid #eee; margin-bottom: 10px;
+        }
+        .menu-item { padding: 12px 20px; cursor: pointer; font-weight: 500; color: #5c5f62;
+        display: flex; align-items: center; gap: 10px; transition: 0.2s; text-decoration: none;
+        }
+        .menu-item:hover { background: #f1f2f3; color: var(--primary);
+        }
+        .menu-item.active { background: #edfffa; color: var(--primary); font-weight: 600;
+        }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .top-bar { background: var(--white); padding: 15px 20px; border-bottom: 1px solid #e1e3e5;
+        display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .input-group { display: flex;
+        align-items: center; gap: 5px; }
+        input, select { padding: 8px 12px;
+        border: 1px solid #babfc3; border-radius: 4px; font-size: 14px; outline: none;
+        }
+        input:focus { border-color: var(--primary);
+        }
+        .btn { background: var(--primary); color: white; border: none; padding: 8px 16px;
+        border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        .btn:hover { background: #006e52;
+        }
+        .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333;
+        }
+        .btn-secondary:hover { background: #f6f6f7;
+        }
         /* Outline Button for Download */
-        .btn-outline { background: white; border: 1px solid #babfc3; color: #333; font-size: 11px; padding: 4px 8px; margin-top: 5px; cursor: pointer; border-radius: 4px; font-weight: 500; }
-        .btn-outline:hover { background: #f6f6f7; border-color: #8c9196; }
-        .btn-sm { padding: 4px 8px; font-size: 11px; margin-top: 5px; }
-        .btn-link { background: none; border: none; color: #008060; padding: 0; font-size: 12px; text-decoration: underline; cursor: pointer; margin-bottom: 5px; }
-        .btn-disabled { background: #e4e5e7; color: #8c9196; cursor: not-allowed; border: 1px solid #e4e5e7; }
-        .content-area { flex: 1; overflow-y: auto; padding: 20px; }
-        .order-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid var(--primary); }
-        .order-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .btn-outline { background: white;
+        border: 1px solid #babfc3; color: #333; font-size: 11px; padding: 4px 8px; margin-top: 5px; cursor: pointer; border-radius: 4px; font-weight: 500;
+        }
+        .btn-outline:hover { background: #f6f6f7; border-color: #8c9196;
+        }
+        .btn-sm { padding: 4px 8px; font-size: 11px; margin-top: 5px;
+        }
+        .btn-link { background: none; border: none; color: #008060; padding: 0; font-size: 12px;
+        text-decoration: underline; cursor: pointer; margin-bottom: 5px; }
+        .btn-disabled { background: #e4e5e7; color: #8c9196;
+        cursor: not-allowed; border: 1px solid #e4e5e7; }
+        .content-area { flex: 1; overflow-y: auto;
+        padding: 20px; }
+        .order-card { background: white; border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid var(--primary);
+        }
+        .order-header { display: flex; justify-content: space-between; align-items: flex-start;
+        }
         
-        /* NEW STYLES FOR ID & CUSTOMER INFO LAYOUT */
-        .header-left { display: flex; gap: 20px; align-items: flex-start; flex: 1; }
-        .info-block { display: flex; flex-direction: column; }
-        .order-id { font-weight: 700; font-size: 16px; color: var(--primary); }
-        .order-date { font-size: 12px; color: #6d7175; }
+        /* HEADER LEFT LAYOUT */
+        .header-left { display: flex;
+        gap: 20px; align-items: flex-start; flex: 1; }
+        .info-block { display: flex; flex-direction: column;
+        }
+        .order-id { font-weight: 700; font-size: 16px; color: var(--primary);
+        }
+        .order-date { font-size: 12px; color: #6d7175;
+        }
         
         /* CUSTOMER DETAILS STYLING */
-        .customer-details-box { display: flex; flex-direction: column; font-size: 13px; color: #333; line-height: 1.4; border-left: 2px solid #eee; padding-left: 10px; }
-        .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-        .copy-icon { cursor: pointer; font-size: 14px; color: #555; transition: 0.2s; padding: 2px; border-radius: 3px;}
-        .copy-icon:hover { background: #eee; color: #000; }
-        .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px; }
-        .cust-addr { font-size: 12px; color: #666; max-width: 400px; margin-top: 2px; }
-
-        .order-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-        .price-tag { font-weight: 700; font-size: 15px; }
-        /* Status Badges */
-        .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: capitalize; display: inline-block; }
-        .status-paid { background: #c4f5cd; color: #005c26; }
-        .status-pending { background: #ffebd3; color: #8a6116; }
-        .status-voided { background: #ffe5e5; color: #d82c0d; }
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px; }
-        .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center; }
-        .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
-        .p-img:hover { transform: scale(1.05); }
-        .variant-text { font-size: 10px; color: #555; margin-top: 2px; line-height: 1.2; word-wrap: break-word; max-width: 100%; text-align: center; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px; }
-        .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .customer-details-box { display: flex;
+        flex-direction: column; font-size: 13px; color: #333; line-height: 1.4; border-left: 2px solid #eee; padding-left: 10px;
+        }
+        .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px;
+        }
+        .copy-icon { cursor: pointer; font-size: 14px; color: #555; transition: 0.2s; padding: 2px;
+        border-radius: 3px;}
+        .copy-icon:hover { background: #eee; color: #000;
+        }
+        .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px;
+        }
         
-        .pagination { display: flex; justify-content: center; gap: 10px; padding: 20px; }
+        /* CHANGED: Removed max-width and no-wrap to allow full width and wrapping only when needed */
+        .cust-addr { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 2px;
+            /* Allow text to wrap naturally if it hits the right side */
+        }
+
+        .order-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+        }
+        .price-tag { font-weight: 700; font-size: 15px;
+        }
+        /* Status Badges */
+        .status-badge { font-size: 11px;
+        padding: 2px 8px; border-radius: 10px; font-weight: 600; text-transform: capitalize; display: inline-block;
+        }
+        .status-paid { background: #c4f5cd; color: #005c26;
+        }
+        .status-pending { background: #ffebd3; color: #8a6116;
+        }
+        .status-voided { background: #ffe5e5; color: #d82c0d;
+        }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px;
+        }
+        .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center;
+        }
+        .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px;
+        border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
+        .p-img:hover { transform: scale(1.05);
+        }
+        .variant-text { font-size: 10px; color: #555; margin-top: 2px; line-height: 1.2; word-wrap: break-word;
+        max-width: 100%; text-align: center; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px;
+        }
+        .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic;
+        max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .pagination { display: flex;
+        justify-content: center; gap: 10px; padding: 20px; }
         /* Modal Styles */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s; position: relative; }
-        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px; color: #666; cursor: pointer; line-height: 1; }
-        .modal-close:hover { color: #000; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
-        .form-group input, .form-group textarea { width: 100%; box-sizing: border-box; }
-        .form-group input[readonly], .form-group textarea[readonly] { background-color: #f9fafb; color: #666; cursor: default; }
-        .row { display: flex; gap: 10px; }
-        .hidden { display: none; }
-        .warning { color: red; font-size: 11px; margin-top: 2px; }
-        .loader { text-align: center; margin-top: 50px; color: #666; }
+        .modal { display: none;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: popIn 0.3s; position: relative;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 15px; border-bottom: 1px solid #eee;
+        padding-bottom: 10px; }
+        .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px;
+        color: #666; cursor: pointer; line-height: 1; }
+        .modal-close:hover { color: #000;
+        }
+        .form-group { margin-bottom: 12px;
+        }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px;
+        color: #444; }
+        .form-group input, .form-group textarea { width: 100%; box-sizing: border-box;
+        }
+        .form-group input[readonly], .form-group textarea[readonly] { background-color: #f9fafb; color: #666; cursor: default;
+        }
+        .row { display: flex; gap: 10px;
+        }
+        .hidden { display: none;
+        }
+        .warning { color: red; font-size: 11px; margin-top: 2px;
+        }
+        .loader { text-align: center; margin-top: 50px; color: #666;
+        }
         /* Image Preview Modal */
-        .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; flex-direction: column;}
-        .img-preview img { max-width:90%; max-height:85%; border-radius:4px; margin-bottom: 10px;}
-        .preview-controls { position:absolute; top:20px; right:30px; display: flex; gap: 15px; align-items: center; }
-        .close-preview { color:white; font-size:35px; cursor:pointer; line-height: 0.8; }
+        .img-preview { display: none;
+        position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center;
+        flex-direction: column;}
+        .img-preview img { max-width:90%; max-height:85%; border-radius:4px;
+        margin-bottom: 10px;}
+        .preview-controls { position:absolute; top:20px; right:30px; display: flex; gap: 15px; align-items: center;
+        }
+        .close-preview { color:white; font-size:35px; cursor:pointer; line-height: 0.8;
+        }
         /* Navigation Arrows */
-        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; user-select: none; background: rgba(0,0,0,0.3); border-radius: 5px; }
-        .img-nav:hover { background: rgba(0,0,0,0.6); }
-        .prev-btn { left: 20px; } .next-btn { right: 20px; }
-        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-        @keyframes popIn { from {transform: scale(0.9); opacity:0} to {transform: scale(1); opacity:1} }
-        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+        .img-nav { position: absolute;
+        top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; user-select: none; background: rgba(0,0,0,0.3); border-radius: 5px;
+        }
+        .img-nav:hover { background: rgba(0,0,0,0.6);
+        }
+        .prev-btn { left: 20px; } .next-btn { right: 20px;
+        }
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center;
+        border-radius: 4px; padding: 16px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        #toast.show { visibility: visible;
+        animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        @keyframes popIn { from {transform: scale(0.9);
+        opacity:0} to {transform: scale(1); opacity:1} }
+        @keyframes fadein { from {bottom: 0;
+        opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px;
+        opacity: 1;} to {bottom: 0; opacity: 0;} }
         @media (max-width: 768px) {
-            body { flex-direction: column; height: auto; overflow: auto; }
-            .sidebar { width: 100%; flex-direction: row; padding: 10px; overflow-x: auto; }
-            .menu-item { white-space: nowrap; }
-            .top-bar { flex-direction: column; align-items: stretch; }
-            .modal-box { width: 90%; }
-            .header-left { flex-direction: column; gap: 10px; }
-            .customer-details-box { border-left: none; border-top: 1px solid #eee; padding-left: 0; padding-top: 8px; margin-top: 5px; }
+            body { flex-direction: column;
+            height: auto; overflow: auto; }
+            .sidebar { width: 100%;
+            flex-direction: row; padding: 10px; overflow-x: auto; }
+            .menu-item { white-space: nowrap;
+            }
+            .top-bar { flex-direction: column; align-items: stretch;
+            }
+            .modal-box { width: 90%;
+            }
+            .header-left { flex-direction: column; gap: 10px;
+            }
+            .customer-details-box { border-left: none; border-top: 1px solid #eee;
+            padding-left: 0; padding-top: 8px; margin-top: 5px; }
         }
     </style>
 </head>
@@ -112,7 +211,9 @@
 
     <div class="main">
         <div class="top-bar" id="filterBar">
-            <input type="text" id="searchId" placeholder="ID, Name, Phone..." style="width: 200px;">
+          
+            <input type="text" id="searchId" placeholder="Order ID" style="width: 200px;">
+            
             <select id="statusFilter" onchange="applyFilters()">
                 <option value="any" selected>Any Status</option>
                 <option value="pending">Payment Pending</option>
@@ -125,6 +226,7 @@
                 <input type="date" id="dateTo">
             </div>
             <button class="btn" onclick="applyFilters()">Filter</button>
+   
             <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
         </div>
 
@@ -133,8 +235,10 @@
             <div id="ordersContainer"></div>
             
             <div class="pagination" id="paginationControls" style="display:none;">
+                
                 <button class="btn btn-secondary" id="btnPrev" onclick="changePage('prev')" disabled>Previous</button>
-                <span style="font-size:12px; color:#666; display:flex; align-items:center;">&nbsp; 50 Orders / Page &nbsp;</span>
+                <span style="font-size:12px;
+                color:#666; display:flex; align-items:center;">&nbsp; 50 Orders / Page &nbsp;</span>
                 <button class="btn btn-secondary" id="btnNext" onclick="changePage('next')" disabled>Next</button>
             </div>
         </div>
@@ -153,30 +257,37 @@
             <div class="form-group">
                 <label>Customer Number (11 Digits)</label>
                 <div class="row">
-                    <input type="number" id="cNumber" placeholder="017xxxxxxxx" onkeypress="handleEnter(event)">
+       
+                     <input type="number" id="cNumber" placeholder="017xxxxxxxx" onkeypress="handleEnter(event)">
                     <button class="btn btn-secondary" id="btnCheck" onclick="checkCustomer()">Check</button>
                 </div>
                 <div id="numWarning" class="warning"></div>
             </div>
 
             <div id="customerDetails" class="hidden">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <span style="font-size:12px; font-weight:600; color:#444;">Details</span>
+                <div style="display:flex; justify-content:space-between;
+                align-items:center; margin-bottom:5px;">
+                    <span style="font-size:12px;
+                    font-weight:600; color:#444;">Details</span>
                     <button id="btnTriggerUpdate" class="btn btn-sm btn-secondary" style="display:none;" onclick="enableUpdateMode()">Update</button>
                 </div>
                 
                 <div class="form-group">
                     <label>Customer Name</label>
-                    <input type="text" id="cName">
+   
+                     <input type="text" id="cName">
                 </div>
                 <div class="form-group">
                     <label>Address</label>
                     <textarea id="cAddress" rows="2"></textarea>
+      
                 </div>
                 
-                <div style="text-align: right; margin-top: 15px;">
+                <div style="text-align: right;
+                margin-top: 15px;">
                     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn" id="btnUpdateData" onclick="performCustomerUpdate()" style="display:none; background:#008060; color:white;">Update Data</button>
+                    <button class="btn" id="btnUpdateData" onclick="performCustomerUpdate()" style="display:none;
+                    background:#008060; color:white;">Update Data</button>
                     <button class="btn" id="btnSave" onclick="saveToSheet()">Save to List</button>
                 </div>
             </div>
@@ -185,7 +296,8 @@
 
     <div id="imgPreview" class="img-preview" onclick="if(event.target === this) this.style.display='none'">
         <div class="preview-controls">
-            <span class="close-preview" onclick="document.getElementById('imgPreview').style.display='none'">&times;</span>
+            <span class="close-preview" 
+            onclick="document.getElementById('imgPreview').style.display='none'">&times;</span>
         </div>
         <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1)">&#10094;</span>
         <img id="previewImgSrc" src="">
@@ -196,7 +308,6 @@
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEf-503JgVRQGLSaFFz8CHjSbJlmTX-UNnyjUiS6yyjk-JGqavucbmnnc_do9C69rb/exec"; 
         
         let nextPageCursor = "", prevPageCursor = "", isNewCustomer = false, searchTimeout, currentPreviewImages = [], currentPreviewIndex = 0;
-
         window.onload = function() {
             document.getElementById('statusFilter').value = 'any';
             fetchOrders();
@@ -220,10 +331,8 @@
             let dTo = document.getElementById('dateTo').value;
 
             let url = `${SCRIPT_URL}?action=getOrders&status=${encodeURIComponent(status)}`;
-            
             // Search Param passes as 'name' to code.gs, which now handles it as 'query'
             if(sid) url += `&name=${encodeURIComponent(sid)}`;
-            
             // Date params (Backend now adds time automatically)
             if(dFrom) url += `&created_at_min=${dFrom}`;
             if(dTo) url += `&created_at_max=${dTo}`;
@@ -238,7 +347,6 @@
                 if (data.status === 'success') {
                     // Pass savedDetails map to renderOrders
                     renderOrders(data.orders, data.images, data.savedIds || [], data.savedDetails || {});
-                    
                     nextPageCursor = data.nextPage || "";
                     prevPageCursor = data.prevPage || "";
                     
@@ -266,21 +374,26 @@
                 let imageUrls = [];
                 // Collect images
                 if (order.line_items) {
-                    order.line_items.forEach(item => {
+           
+                     order.line_items.forEach(item => {
                          if (item.product_id && images[item.product_id]) {
                              imageUrls.push(images[item.product_id]);
                          }
-                    });
+      
+                      });
                 }
                 
                 imageUrls = [...new Set(imageUrls)];
                 const allImagesStr = JSON.stringify(imageUrls).replace(/"/g, '&quot;');
-                
+               
+                 
                 let imgIndex = 0;
                 if(order.line_items) {
                     order.line_items.forEach(item => {
                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
-                        let clickHandler = (images[item.product_id]) ? `onclick="showPreview(${allImagesStr}, ${imgIndex++})"` : '';
+            
+                         let clickHandler = (images[item.product_id]) ?
+                        `onclick="showPreview(${allImagesStr}, ${imgIndex++})"` : '';
                         
                         let variantInfo = '';
                         if (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== '') {
@@ -294,10 +407,11 @@
                         productHtml += `<div class="p-item">
                             <img src="${img}" class="p-img" ${clickHandler}>
                             <div style="font-weight:600; font-size:12px; margin-top:3px;">${item.quantity}x</div>
-                            ${variantInfo}
+           
+                                 ${variantInfo}
                             ${vendorInfo}
                         </div>`;
-                    });
+                        });
                 }
 
                 // Check if already listed
@@ -305,16 +419,17 @@
                 let addToSheetBtn = isListed ? 
                     `<button class="btn btn-disabled" disabled>Already Listed</button>` : 
                     `<button class="btn" onclick="openAddModal('${order.order_number}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
-
                 // Status Badge
-                let status = order.financial_status || 'pending';
+                let status = order.financial_status ||
+                'pending';
                 let statusClass = 'status-pending';
                 let statusText = 'Pending';
-                if (status === 'paid') { statusClass = 'status-paid'; statusText = 'Paid'; }
-                else if (status === 'voided') { statusClass = 'status-voided'; statusText = 'Voided'; }
+                if (status === 'paid') { statusClass = 'status-paid'; statusText = 'Paid';
+                }
+                else if (status === 'voided') { statusClass = 'status-voided';
+                statusText = 'Voided'; }
                 
                 let statusBadge = `<span class="status-badge ${statusClass}">${statusText}</span>`;
-
                 // Download Button
                 let downloadBtn = '';
                 if (imageUrls.length === 1) {
@@ -341,11 +456,13 @@
                         customerDetailsHtml = `
                             <div class="customer-details-box">
                                 <div class="cust-name-row">
-                                    <span>${saved.name}</span>
+                                    
+                                <span>${saved.name}</span>
                                     <span class="copy-icon" title="Copy Info" onclick="copyToClipboard('${copyText}')">📋</span>
                                 </div>
+                            
                                 <div class="cust-phone">${saved.phone}</div>
-                                <div class="cust-addr">${saved.address}</div>
+                                <div class="cust-addr" title="${saved.address}">${saved.address}</div>
                             </div>
                         `;
                     }
@@ -354,20 +471,25 @@
                 html += `<div class="order-card">
                     <div class="order-header">
                         <div class="header-left">
-                            <div class="info-block">
+                   
+                             <div class="info-block">
                                 <div class="order-id">#${order.order_number}</div>
                                 <div class="order-date">
+                        
                                     <div>${formattedDate}</div>
                                     <div style="font-size: 11px; color: #6d7175; margin-top: 2px;">${dayName}</div>
                                 </div>
-                            </div>
+              
+                              </div>
                             ${customerDetailsHtml}
                         </div>
 
                         <div class="order-actions">
-                            <div class="price-tag">${order.total_price}</div>
+         
+                                   <div class="price-tag">${order.total_price}</div>
                             ${addToSheetBtn}
                             ${statusBadge}
+                        
                             ${downloadBtn}
                         </div>
                     </div>
@@ -421,9 +543,11 @@
             document.getElementById('addModal').style.display = 'flex';
         }
 
-        function closeModal() { document.getElementById('addModal').style.display = 'none'; }
+        function closeModal() { document.getElementById('addModal').style.display = 'none';
+        }
         
-        function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('btnCheck').click(); } }
+        function handleEnter(e) { if (e.key === 'Enter') { e.preventDefault();
+        document.getElementById('btnCheck').click(); } }
 
         async function checkCustomer() {
             let num = document.getElementById('cNumber').value;
@@ -452,8 +576,10 @@
                     document.getElementById('btnUpdateData').style.display = 'none';
                     document.getElementById('btnSave').style.display = 'inline-block';
                 }
-            } catch (err) { showToast("Connection Failed."); } 
-            finally { btn.innerText = originalText; btn.disabled = false; }
+            } catch (err) { showToast("Connection Failed.");
+            } 
+            finally { btn.innerText = originalText;
+            btn.disabled = false; }
         }
 
         function setInputsReadOnly(state) {
@@ -475,7 +601,8 @@
             let cNumber = '0' + parseInt(document.getElementById('cNumber').value);
             let cName = document.getElementById('cName').value;
             let cAddress = document.getElementById('cAddress').value;
-            if(!cName || !cAddress) { showToast("Name and Address required"); btn.innerText = 'Update Data'; btn.disabled = false; return; }
+            if(!cName || !cAddress) { showToast("Name and Address required"); btn.innerText = 'Update Data'; btn.disabled = false; return;
+            }
 
             const qs = new URLSearchParams({ action: 'updateCustomerOnly', cNumber: cNumber, cName: cName, cAddress: cAddress }).toString();
             try {
@@ -487,50 +614,66 @@
                     document.getElementById('btnSave').style.display = 'inline-block';
                     setInputsReadOnly(true);
                     document.getElementById('btnTriggerUpdate').style.display = 'block';
-                } else { showToast(data.message); }
-            } catch(e) { showToast("Update Failed"); }
+                } else { showToast(data.message);
+                }
+            } catch(e) { showToast("Update Failed");
+            }
             btn.innerText = 'Update Data'; btn.disabled = false;
         }
 
         async function saveToSheet() {
-            const btn = document.getElementById('btnSave'); btn.innerText = 'Saving...'; btn.disabled = true;
+            const btn = document.getElementById('btnSave');
+            btn.innerText = 'Saving...'; btn.disabled = true;
             let payload = {
                 action: 'saveOrder',
                 oID: document.getElementById('m_orderId').value,
                 oDate: document.getElementById('m_orderDate').value,
                 oAmount: document.getElementById('m_amount').value,
                 cNumber: '0' + parseInt(document.getElementById('cNumber').value),
+    
                 cName: document.getElementById('cName').value,
                 cAddress: document.getElementById('cAddress').value,
                 isNewCustomer: isNewCustomer
             };
-            if(!payload.cName || !payload.cAddress) { showToast("Fill Name/Address"); btn.innerText = 'Save to List'; btn.disabled = false; return; }
+            if(!payload.cName || !payload.cAddress) { showToast("Fill Name/Address"); btn.innerText = 'Save to List'; btn.disabled = false; return;
+            }
             try {
                 const res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(payload).toString(), { method: 'GET', redirect: 'follow' });
                 const data = await res.json();
                 if (data.status === 'error') showToast(data.message);
-                else { showToast("✅ Saved!"); closeModal(); fetchOrders(); }
-            } catch(e) { showToast("Error saving."); }
+                else { showToast("✅ Saved!"); closeModal(); fetchOrders();
+                }
+            } catch(e) { showToast("Error saving.");
+            }
             btn.innerText = 'Save to List'; btn.disabled = false;
         }
 
-        function showToast(msg) { let x=document.getElementById("toast"); x.className="show"; x.innerText=msg; setTimeout(()=>{x.className=x.className.replace("show","")},3000); }
-        function closeModal() { document.getElementById('addModal').style.display = 'none'; }
-        function applyFilters() { fetchOrders(); }
+        function showToast(msg) { let x=document.getElementById("toast"); x.className="show"; x.innerText=msg; setTimeout(()=>{x.className=x.className.replace("show","")},3000);
+        }
+        function closeModal() { document.getElementById('addModal').style.display = 'none';
+        }
+        function applyFilters() { fetchOrders();
+        }
         function resetFilters() { 
-            document.getElementById('statusFilter').value = 'any'; 
+            document.getElementById('statusFilter').value = 'any';
             document.getElementById('searchId').value = ''; 
             document.getElementById('dateFrom').value = ''; 
             document.getElementById('dateTo').value = ''; 
-            fetchOrders(); 
+            fetchOrders();
         }
-        function changePage(dir) { if(dir==='next') fetchOrders(nextPageCursor); else fetchOrders(prevPageCursor); }
+        function changePage(dir) { if(dir==='next') fetchOrders(nextPageCursor); else fetchOrders(prevPageCursor);
+        }
         
-        function showPreview(images, index) { currentPreviewImages = images; currentPreviewIndex = index; updatePreviewImage(); document.getElementById('imgPreview').style.display = 'flex'; }
-        function navigatePreview(dir) { let newIndex = currentPreviewIndex + dir; if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; updatePreviewImage(); } }
-        function updatePreviewImage() { document.getElementById('previewImgSrc').src = currentPreviewImages[currentPreviewIndex]; 
-            const prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
-            if(currentPreviewImages.length > 1) { prev.style.display = currentPreviewIndex > 0 ? 'block' : 'none'; next.style.display = currentPreviewIndex < currentPreviewImages.length - 1 ? 'block' : 'none'; } else { prev.style.display = 'none'; next.style.display = 'none'; }
+        function showPreview(images, index) { currentPreviewImages = images;
+        currentPreviewIndex = index; updatePreviewImage(); document.getElementById('imgPreview').style.display = 'flex'; }
+        function navigatePreview(dir) { let newIndex = currentPreviewIndex + dir;
+        if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; updatePreviewImage();
+        } }
+        function updatePreviewImage() { document.getElementById('previewImgSrc').src = currentPreviewImages[currentPreviewIndex];
+        const prev = document.getElementById('prevBtn'), next = document.getElementById('nextBtn');
+            if(currentPreviewImages.length > 1) { prev.style.display = currentPreviewIndex > 0 ? 'block' : 'none';
+            next.style.display = currentPreviewIndex < currentPreviewImages.length - 1 ? 'block' : 'none'; } else { prev.style.display = 'none'; next.style.display = 'none';
+        }
         }
     </script>
 </body>
