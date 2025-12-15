@@ -286,8 +286,8 @@
             <div class="form-group">
                 <label>Customer Number (11 Digits)</label>
                 <div class="row">
-       
-                     <input type="number" id="cNumber" placeholder="017xxxxxxxx" onkeypress="handleEnter(event)">
+                     <!-- Changed type from "number" to "text" to support formatting and leading zeros -->
+                     <input type="text" id="cNumber" placeholder="017xxxxxxxx" onkeypress="handleEnter(event)">
                     <button class="btn btn-secondary" id="btnCheck" onclick="checkCustomer()">Check</button>
                 </div>
                 <div id="numWarning" class="warning"></div>
@@ -344,6 +344,41 @@
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => { applyFilters(); }, 1000);
             });
+
+            // ADDED: Phone number formatting AND VALIDATION logic
+            const cNumberInput = document.getElementById('cNumber');
+            if(cNumberInput) {
+                cNumberInput.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    
+                    // 1. Cleaning & Formatting
+                    value = value.replace(/[\s-]/g, ''); // Remove spaces/dashes
+
+                    if (value.startsWith('+880')) {
+                        value = '0' + value.substring(4);
+                    } else if (value.startsWith('880')) {
+                        value = '0' + value.substring(3);
+                    }
+
+                    value = value.replace(/[^0-9]/g, ''); // Remove non-numbers
+                    e.target.value = value; // Update input value
+
+                    // 2. Validation Logic (Red/Green Border)
+                    if (value.length === 0) {
+                        // Reset to default if empty
+                        e.target.style.borderColor = '#babfc3';
+                        e.target.style.borderWidth = '1px';
+                    } else if (value.length === 11 && value.startsWith('01')) {
+                        // Valid: Green
+                        e.target.style.borderColor = '#2ecc71'; // Green color
+                        e.target.style.borderWidth = '2px';
+                    } else {
+                        // Invalid: Red
+                        e.target.style.borderColor = '#e74c3c'; // Red color
+                        e.target.style.borderWidth = '2px';
+                    }
+                });
+            }
         };
 
         async function fetchOrders(cursor = "") {
