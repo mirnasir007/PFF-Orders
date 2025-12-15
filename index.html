@@ -32,8 +32,21 @@
         .content-area { flex: 1; overflow-y: auto; padding: 20px; }
         .order-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid var(--primary); }
         .order-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        
+        /* NEW STYLES FOR ID & CUSTOMER INFO LAYOUT */
+        .header-left { display: flex; gap: 20px; align-items: flex-start; flex: 1; }
+        .info-block { display: flex; flex-direction: column; }
         .order-id { font-weight: 700; font-size: 16px; color: var(--primary); }
         .order-date { font-size: 12px; color: #6d7175; }
+        
+        /* CUSTOMER DETAILS STYLING */
+        .customer-details-box { display: flex; flex-direction: column; font-size: 13px; color: #333; line-height: 1.4; border-left: 2px solid #eee; padding-left: 10px; }
+        .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+        .copy-icon { cursor: pointer; font-size: 14px; color: #555; transition: 0.2s; padding: 2px; border-radius: 3px;}
+        .copy-icon:hover { background: #eee; color: #000; }
+        .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px; }
+        .cust-addr { font-size: 12px; color: #666; max-width: 400px; margin-top: 2px; }
+
         .order-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .price-tag { font-weight: 700; font-size: 15px; }
         /* Status Badges */
@@ -46,7 +59,6 @@
         .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
         .p-img:hover { transform: scale(1.05); }
         .variant-text { font-size: 10px; color: #555; margin-top: 2px; line-height: 1.2; word-wrap: break-word; max-width: 100%; text-align: center; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px; }
-        /* NEW: Vendor Text Style */
         .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         .pagination { display: flex; justify-content: center; gap: 10px; padding: 20px; }
@@ -84,6 +96,8 @@
             .menu-item { white-space: nowrap; }
             .top-bar { flex-direction: column; align-items: stretch; }
             .modal-box { width: 90%; }
+            .header-left { flex-direction: column; gap: 10px; }
+            .customer-details-box { border-left: none; border-top: 1px solid #eee; padding-left: 0; padding-top: 8px; margin-top: 5px; }
         }
     </style>
 </head>
@@ -98,7 +112,7 @@
 
     <div class="main">
         <div class="top-bar" id="filterBar">
-            <input type="text" id="searchId" placeholder="Search Order ID..." style="width: 150px;">
+            <input type="text" id="searchId" placeholder="ID, Name, Phone..." style="width: 200px;">
             <select id="statusFilter" onchange="applyFilters()">
                 <option value="any" selected>Any Status</option>
                 <option value="pending">Payment Pending</option>
@@ -202,9 +216,18 @@
 
             let status = document.getElementById('statusFilter').value;
             let sid = document.getElementById('searchId').value;
+            let dFrom = document.getElementById('dateFrom').value;
+            let dTo = document.getElementById('dateTo').value;
 
             let url = `${SCRIPT_URL}?action=getOrders&status=${encodeURIComponent(status)}`;
+            
+            // Search Param passes as 'name' to code.gs, which now handles it as 'query'
             if(sid) url += `&name=${encodeURIComponent(sid)}`;
+            
+            // Date params (Backend now adds time automatically)
+            if(dFrom) url += `&created_at_min=${dFrom}`;
+            if(dTo) url += `&created_at_max=${dTo}`;
+
             if(cursor) url += `&page_info=${encodeURIComponent(cursor)}`;
 
             try {
@@ -213,7 +236,8 @@
                 document.getElementById('loader').style.display = 'none';
                 
                 if (data.status === 'success') {
-                    renderOrders(data.orders, data.images, data.savedIds || []);
+                    // Pass savedDetails map to renderOrders
+                    renderOrders(data.orders, data.images, data.savedIds || [], data.savedDetails || {});
                     
                     nextPageCursor = data.nextPage || "";
                     prevPageCursor = data.prevPage || "";
@@ -230,7 +254,7 @@
             }
         }
 
-        function renderOrders(orders, images, savedIds) {
+        function renderOrders(orders, images, savedIds, savedDetails) {
             let html = '';
             if(!orders || orders.length === 0) {
                 document.getElementById('ordersContainer').innerHTML = '<div style="padding:20px; text-align:center">No orders found.</div>';
@@ -249,9 +273,7 @@
                     });
                 }
                 
-                // Deduplicate URLs just in case
                 imageUrls = [...new Set(imageUrls)];
-
                 const allImagesStr = JSON.stringify(imageUrls).replace(/"/g, '&quot;');
                 
                 let imgIndex = 0;
@@ -260,13 +282,10 @@
                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                         let clickHandler = (images[item.product_id]) ? `onclick="showPreview(${allImagesStr}, ${imgIndex++})"` : '';
                         
-                        // VARIANT TEXT
                         let variantInfo = '';
                         if (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== '') {
                             variantInfo = `<div class="variant-text">${item.variant_title}</div>`;
                         }
-
-                        // NEW: VENDOR TEXT
                         let vendorInfo = '';
                         if (item.vendor) {
                             vendorInfo = `<div class="vendor-text">${item.vendor}</div>`;
@@ -281,23 +300,22 @@
                     });
                 }
 
-                // Add to List Button
-                let addToSheetBtn = savedIds.includes(String(order.order_number)) ? 
+                // Check if already listed
+                let isListed = savedIds.includes(String(order.order_number));
+                let addToSheetBtn = isListed ? 
                     `<button class="btn btn-disabled" disabled>Already Listed</button>` : 
                     `<button class="btn" onclick="openAddModal('${order.order_number}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
 
-                // Status Badge Logic
-                let status = order.financial_status || 'pending'; // Default to pending if missing
+                // Status Badge
+                let status = order.financial_status || 'pending';
                 let statusClass = 'status-pending';
                 let statusText = 'Pending';
-
                 if (status === 'paid') { statusClass = 'status-paid'; statusText = 'Paid'; }
                 else if (status === 'voided') { statusClass = 'status-voided'; statusText = 'Voided'; }
-                else if (status === 'pending') { statusClass = 'status-pending'; statusText = 'Pending'; }
                 
                 let statusBadge = `<span class="status-badge ${statusClass}">${statusText}</span>`;
 
-                // Download Button Logic
+                // Download Button
                 let downloadBtn = '';
                 if (imageUrls.length === 1) {
                     downloadBtn = `<button class="btn-outline" onclick="downloadImages(['${imageUrls[0]}'])">Download Image</button>`;
@@ -305,7 +323,7 @@
                      downloadBtn = `<button class="btn-outline" onclick='downloadImages(${JSON.stringify(imageUrls)})'>Download All Images</button>`;
                 }
 
-                // DATE FIX: dd/mm/yyyy and Day Name
+                // Date Parsing
                 const d = new Date(order.created_at);
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -313,15 +331,39 @@
                 const formattedDate = `${day}/${month}/${year}`;
                 const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
 
+                // CUSTOMER DETAILS LOGIC
+                let customerDetailsHtml = '';
+                if (isListed) {
+                    const saved = savedDetails[String(order.order_number)];
+                    if (saved) {
+                        // Function to copy: "#1234 Name"
+                        const copyText = `#${order.order_number} ${saved.name}`;
+                        customerDetailsHtml = `
+                            <div class="customer-details-box">
+                                <div class="cust-name-row">
+                                    <span>${saved.name}</span>
+                                    <span class="copy-icon" title="Copy Info" onclick="copyToClipboard('${copyText}')">📋</span>
+                                </div>
+                                <div class="cust-phone">${saved.phone}</div>
+                                <div class="cust-addr">${saved.address}</div>
+                            </div>
+                        `;
+                    }
+                }
+
                 html += `<div class="order-card">
                     <div class="order-header">
-                        <div>
-                            <div class="order-id">#${order.order_number}</div>
-                            <div class="order-date">
-                                <div>${formattedDate}</div>
-                                <div style="font-size: 11px; color: #6d7175; margin-top: 2px;">${dayName}</div>
+                        <div class="header-left">
+                            <div class="info-block">
+                                <div class="order-id">#${order.order_number}</div>
+                                <div class="order-date">
+                                    <div>${formattedDate}</div>
+                                    <div style="font-size: 11px; color: #6d7175; margin-top: 2px;">${dayName}</div>
+                                </div>
                             </div>
+                            ${customerDetailsHtml}
                         </div>
+
                         <div class="order-actions">
                             <div class="price-tag">${order.total_price}</div>
                             ${addToSheetBtn}
@@ -333,6 +375,15 @@
                 </div>`;
             });
             document.getElementById('ordersContainer').innerHTML = html;
+        }
+
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast("Copied: " + text);
+            } catch (err) {
+                showToast("Failed to copy");
+            }
         }
 
         async function downloadImages(urls) {
@@ -348,10 +399,8 @@
                      document.body.appendChild(a);
                      a.click();
                      document.body.removeChild(a);
-                     // Small delay to help browser handle multiple downloads
                      await new Promise(r => setTimeout(r, 500)); 
                  } catch (e) {
-                     console.error("Download failed, opening in new tab", e);
                      window.open(url, '_blank');
                  }
              }
@@ -468,7 +517,13 @@
         function showToast(msg) { let x=document.getElementById("toast"); x.className="show"; x.innerText=msg; setTimeout(()=>{x.className=x.className.replace("show","")},3000); }
         function closeModal() { document.getElementById('addModal').style.display = 'none'; }
         function applyFilters() { fetchOrders(); }
-        function resetFilters() { document.getElementById('statusFilter').value = 'any'; fetchOrders(); }
+        function resetFilters() { 
+            document.getElementById('statusFilter').value = 'any'; 
+            document.getElementById('searchId').value = ''; 
+            document.getElementById('dateFrom').value = ''; 
+            document.getElementById('dateTo').value = ''; 
+            fetchOrders(); 
+        }
         function changePage(dir) { if(dir==='next') fetchOrders(nextPageCursor); else fetchOrders(prevPageCursor); }
         
         function showPreview(images, index) { currentPreviewImages = images; currentPreviewIndex = index; updatePreviewImage(); document.getElementById('imgPreview').style.display = 'flex'; }
@@ -480,6 +535,3 @@
     </script>
 </body>
 </html>
-
-
-
