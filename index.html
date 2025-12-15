@@ -86,12 +86,10 @@
         .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px;
         }
         
-        /* CHANGED: Removed max-width and no-wrap to allow full width and wrapping only when needed */
         .cust-addr { 
             font-size: 12px; 
             color: #666; 
             margin-top: 2px;
-            /* Allow text to wrap naturally if it hits the right side */
         }
 
         .order-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
@@ -119,8 +117,39 @@
         .variant-text { font-size: 10px; color: #555; margin-top: 2px; line-height: 1.2; word-wrap: break-word;
         max-width: 100%; text-align: center; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px;
         }
-        .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic;
-        max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Updated Vendor Styling */
+        .vendor-text { 
+            font-size: 9px; 
+            color: #777; 
+            margin-top: 2px; 
+            font-weight: 500; 
+            font-style: italic;
+            max-width: 100%; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 4px; /* Space between icon and text */
+        }
+        
+        .vendor-copy-icon {
+            cursor: pointer;
+            font-style: normal;
+            font-size: 11px;
+            color: #444;
+            background: #eee;
+            padding: 2px;
+            border-radius: 3px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+        .vendor-copy-icon:hover {
+            background: #008060;
+            color: white;
+        }
         
         .pagination { display: flex;
         justify-content: center; gap: 10px; padding: 20px; }
@@ -372,14 +401,28 @@
             orders.forEach(order => {
                 let productHtml = '';
                 let imageUrls = [];
+
+                // ----------------------------------------------------
+                // 1. Calculate All Vendors String (e.g. "Vendor1/Vendor2")
+                // ----------------------------------------------------
+                let allVendors = [];
+                if (order.line_items) {
+                    allVendors = order.line_items
+                        .map(item => item.vendor)
+                        .filter(v => v); // Remove empty/null
+                }
+                // Unique vendors joined by slash
+                let uniqueVendors = [...new Set(allVendors)].join('/');
+                // Escape quotes for HTML attribute safety
+                let safeVendorString = uniqueVendors.replace(/'/g, "\\'");
+
+
                 // Collect images
                 if (order.line_items) {
-           
                      order.line_items.forEach(item => {
                          if (item.product_id && images[item.product_id]) {
                              imageUrls.push(images[item.product_id]);
                          }
-      
                       });
                 }
                 
@@ -389,7 +432,7 @@
                  
                 let imgIndex = 0;
                 if(order.line_items) {
-                    order.line_items.forEach(item => {
+                    order.line_items.forEach((item, index) => { // NOTE: Added 'index' here
                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
             
                          let clickHandler = (images[item.product_id]) ?
@@ -399,15 +442,28 @@
                         if (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== '') {
                             variantInfo = `<div class="variant-text">${item.variant_title}</div>`;
                         }
+                        
+                        // ------------------------------------------------
+                        // VENDOR LOGIC: ONLY ON FIRST ITEM (INDEX 0)
+                        // ------------------------------------------------
                         let vendorInfo = '';
                         if (item.vendor) {
-                            vendorInfo = `<div class="vendor-text">${item.vendor}</div>`;
+                            if (index === 0) {
+                                // First Item: Show Copy Icon (Left) + Vendor Name
+                                vendorInfo = `
+                                <div class="vendor-text">
+                                    <span class="vendor-copy-icon" onclick="copyToClipboard('${safeVendorString}')" title="Copy Vendors: ${safeVendorString}">📋</span>
+                                    <span>${item.vendor}</span>
+                                </div>`;
+                            } else {
+                                // Other Items: Show ONLY Vendor Name (No Icon)
+                                vendorInfo = `<div class="vendor-text">${item.vendor}</div>`;
+                            }
                         }
 
                         productHtml += `<div class="p-item">
                             <img src="${img}" class="p-img" ${clickHandler}>
                             <div style="font-weight:600; font-size:12px; margin-top:3px;">${item.quantity}x</div>
-           
                                  ${variantInfo}
                             ${vendorInfo}
                         </div>`;
@@ -500,10 +556,41 @@
         }
 
         async function copyToClipboard(text) {
+            // Strategy 1: Modern Clipboard API
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast("Copied: " + text);
+                    return;
+                } catch (err) {
+                    console.warn("Clipboard API failed, trying fallback...");
+                }
+            }
+
+            // Strategy 2: Fallback using textarea (works in iframes/older browsers)
             try {
-                await navigator.clipboard.writeText(text);
-                showToast("Copied: " + text);
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                
+                // Make it invisible but part of DOM
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                
+                textArea.focus();
+                textArea.select();
+                
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    showToast("Copied: " + text);
+                } else {
+                    showToast("Failed to copy");
+                }
             } catch (err) {
+                console.error("Copy failed", err);
                 showToast("Failed to copy");
             }
         }
