@@ -403,18 +403,32 @@
                 let imageUrls = [];
 
                 // ----------------------------------------------------
-                // 1. Calculate All Vendors String (e.g. "Vendor1/Vendor2")
+                // 1. Calculate All Vendors + Variants String
                 // ----------------------------------------------------
-                let allVendors = [];
+                let vendorVariantStrings = [];
                 if (order.line_items) {
-                    allVendors = order.line_items
-                        .map(item => item.vendor)
-                        .filter(v => v); // Remove empty/null
+                     vendorVariantStrings = order.line_items.map(item => {
+                        let v = item.vendor || "";
+                        // Check if variant exists and is not default
+                        let varTitle = (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== null) ? item.variant_title : "";
+                        
+                        if (v && varTitle) {
+                            // If variant exists: "Vendor,Variant"
+                            return `${v},${varTitle}`;
+                        } else if (v) {
+                            // If no variant: "Vendor"
+                            return v;
+                        }
+                        return "";
+                    }).filter(s => s !== "");
                 }
-                // Unique vendors joined by slash
-                let uniqueVendors = [...new Set(allVendors)].join('/');
+                
+                // Remove duplicates (e.g. if ordered 2x same item, only show once)
+                let uniqueVendorVariants = [...new Set(vendorVariantStrings)];
+                // Join with slash
+                let finalVendorString = uniqueVendorVariants.join('/');
                 // Escape quotes for HTML attribute safety
-                let safeVendorString = uniqueVendors.replace(/'/g, "\\'");
+                let safeVendorString = finalVendorString.replace(/'/g, "\\'");
 
 
                 // Collect images
@@ -450,9 +464,10 @@
                         if (item.vendor) {
                             if (index === 0) {
                                 // First Item: Show Copy Icon (Left) + Vendor Name
+                                // Use safeVendorString which now contains variants!
                                 vendorInfo = `
                                 <div class="vendor-text">
-                                    <span class="vendor-copy-icon" onclick="copyToClipboard('${safeVendorString}')" title="Copy Vendors: ${safeVendorString}">📋</span>
+                                    <span class="vendor-copy-icon" onclick="copyToClipboard('${safeVendorString}')" title="Copy: ${safeVendorString}">📋</span>
                                     <span>${item.vendor}</span>
                                 </div>`;
                             } else {
