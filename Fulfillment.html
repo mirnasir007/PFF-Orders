@@ -30,6 +30,24 @@
         /* Badges */
         .badge-fulfilled { background-color: #c4f5cd; color: #005c26; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; border: 1px solid #a1e6b3; }
 
+        /* Copy Icon Style */
+        .copy-icon {
+            cursor: pointer;
+            margin-right: 6px;
+            font-size: 14px;
+            color: #555;
+            background: #eee;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .copy-icon:hover {
+            background: #008060;
+            color: white;
+        }
+
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px; position: relative; }
@@ -146,6 +164,9 @@
                         <th>Date</th>
                         <th>Order ID</th>
                         <th>Name</th>
+                        <th>Number</th>
+                        <th>Address</th>
+                        <th>Amount</th>
                         <th>Invoice No</th>
                         <th>Action</th>
                     </tr>
@@ -161,6 +182,17 @@
                     btnText = "Mark Done"; // Change button text if already done on Shopify
                 }
 
+                // INVOICE COPY LOGIC
+                let invoiceDisplay = '-';
+                if (o.invoice) {
+                    // Escape single quotes for the onClick function just in case
+                    let safeInvoice = o.invoice.replace(/'/g, "\\'");
+                    invoiceDisplay = `
+                        <span class="copy-icon" onclick="copyToClipboard('${safeInvoice}')" title="Copy Invoice">📋</span>
+                        <span style="font-weight:bold; color:#008060; vertical-align: middle;">${o.invoice}</span>
+                    `;
+                }
+
                 html += `
                 <tr>
                     <td>${formatDateSafe(o.date)}</td>
@@ -169,7 +201,10 @@
                         ${mark}
                     </td>
                     <td>${o.name}</td>
-                    <td style="font-weight:bold; color:#008060;">${o.invoice || '-'}</td>
+                    <td>${o.number || '-'}</td>
+                    <td style="max-width:200px; white-space:normal; font-size:12px;">${o.address || '-'}</td>
+                    <td style="font-weight:bold;">${o.amount || '-'}</td>
+                    <td>${invoiceDisplay}</td>
                     <td>
                         <button class="btn btn-sm" onclick="openFulfillModal('${o.id}')">${btnText}</button>
                     </td>
@@ -196,8 +231,6 @@
             let link = document.getElementById('trackLink').value;
             let btn = document.getElementById('btnConfirm');
 
-            // If already fulfilled on Shopify, tracking might not be needed strictly for sheet update, but good to have.
-            // Assuming we still require tracking number for record.
             if(!num) { showToast("Tracking Number required"); return; }
 
             btn.innerText = "Processing...";
@@ -226,6 +259,33 @@
             }
             btn.innerText = "Confirm";
             btn.disabled = false;
+        }
+        
+        // Added Copy Function
+        async function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showToast("Copied Invoice: " + text);
+                    return;
+                } catch (err) {}
+            }
+            
+            // Fallback
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast("Copied Invoice: " + text);
+            } catch (err) {
+                showToast("Failed to copy");
+            }
         }
 
         function showToast(msg) {
