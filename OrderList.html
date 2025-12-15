@@ -70,6 +70,7 @@
         .status-pending { background: #ffebd3; color: #8a6116; }
         .status-product-entry { background: #e3f1df; color: #202223; border: 1px solid #c4f5cd; }
         .status-hold { background: #fff4e5; color: #663c00; border: 1px solid #fed28c; }
+        .status-void { background: #ffe5e5; color: #d82c0d; border: 1px solid #ffcccc; }
         .status-other { background: #f1f2f3; color: #5c5f62; }
 
         input, textarea { padding: 8px; border: 1px solid #babfc3; border-radius: 4px; width: 100%; box-sizing: border-box; }
@@ -162,7 +163,7 @@
         </div>
 
         <div class="content-area">
-            <div id="loader" style="text-align:center;margin-top:50px;">Loading List & Images...</div>
+            <div id="loader" style="text-align:center;margin-top:50px;">Loading List & Syncing...</div>
             <div id="savedListContainer"></div>
             
             <div class="pagination" id="paginationControls" style="display:none;">
@@ -203,7 +204,7 @@
                 <label class="checkbox-item"><input type="checkbox" value="Hold" class="st-chk"> Hold</label>
                 <hr style="width:100%; border:0; border-top:1px solid #eee; margin: 5px 0;">
                 <label class="checkbox-item"><input type="checkbox" value="Product Entry" id="chkProductEntry" onchange="handleSpecialStatus()"> Product Entry (Invoice Required)</label>
-                <label class="checkbox-item"><input type="checkbox" value="Void" id="chkVoid" onchange="handleSpecialStatus()"> Void (Note Required)</label>
+                <label class="checkbox-item"><input type="checkbox" value="Void" id="chkVoid" onchange="handleSpecialStatus()"> Void (Note Required - Will Cancel Order)</label>
             </div>
             <button class="btn" onclick="saveStatusUpdate()" style="width:100%">Update Status</button>
         </div>
@@ -228,12 +229,12 @@
     <div id="noteModal" class="modal">
         <div class="modal-box">
             <span class="modal-close" onclick="closeModal('noteModal')">&times;</span>
-            <h3>Update Note</h3>
+            <h3 id="noteTitle">Update Note</h3>
             <input type="hidden" id="noteOrderId">
             <textarea id="noteInput" rows="4"></textarea>
             <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                <button class="btn btn-secondary" onclick="deleteNote()">Delete</button>
-                <button class="btn" onclick="saveNote()">Save</button>
+                <button class="btn btn-secondary" onclick="deleteNote()" id="btnDeleteNote">Delete</button>
+                <button class="btn" onclick="saveNote()" id="btnSaveNote">Save</button>
             </div>
         </div>
     </div>
@@ -277,6 +278,7 @@
         let pendingConfirmAction = null;
         let currentPage = 1;
         let hasMorePages = false;
+        let isVoiding = false; // Flag to track if we are in void process
 
         window.onload = function() { fetchSheetOrders(1); };
 
@@ -357,7 +359,8 @@
                 let s = o.status || "";
                 let statusClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
                                   (s.toLowerCase().includes('hold') ? 'status-hold' : 
-                                  (s === 'Pending' ? 'status-pending' : 'status-other'));
+                                  (s.toLowerCase().includes('void') ? 'status-void' :
+                                  (s === 'Pending' ? 'status-pending' : 'status-other')));
                 
                 let noteDisplay = o.note ? o.note : '+ Add Note';
                 let noteStyle = o.note ? 'color:#333;' : 'color:#008060; font-weight:bold; cursor:pointer;';
@@ -492,31 +495,34 @@
         }
         function handleSpecialStatus() {}
         
-        // --- UPDATED SAVE STATUS FUNCTION ---
         async function saveStatusUpdate() {
             let id = document.getElementById('statusOrderId').value, statuses = [];
             document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
             
-            // NEW: Check if "Paid" is selected and trigger backend update
             if(statuses.includes("Paid")) {
                 await markShopifyPaid(id);
+            }
+
+            // CHECK FOR VOID
+            if(document.getElementById('chkVoid').checked) {
+                closeModal('statusModal');
+                // Flag that we are in void mode
+                isVoiding = true;
+                openNoteModal(id, '', false); // Open note modal clean
+                return;
             }
 
             if(document.getElementById('chkProductEntry').checked) {
                 closeModal('statusModal'); openInvoiceModal(id, '', false);
                 pendingStatusUpdate = { id: id, statuses: statuses }; return;
             }
-            if(document.getElementById('chkVoid').checked) {
-                closeModal('statusModal'); openNoteModal(id, '', true);
-                statuses.push("Void"); updateSheet(id, 'status', statuses.join(', ')); return;
-            }
+            
             if(statuses.length > 0) { updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
             else showToast("Select status");
         }
 
-        // --- NEW HELPER TO CALL BACKEND FOR PAID STATUS ---
         async function markShopifyPaid(orderId) {
-            showToast("Syncing with Shopify..."); // Ager "Marking as Paid..." er bodole
+            showToast("Syncing with Shopify...");
             try {
                 let url = `${SCRIPT_URL}?action=markShopifyPaid&orderId=${orderId}`;
                 let res = await fetch(url);
@@ -528,23 +534,65 @@
                     showToast("ℹ️ Order already paid");
                 }
                 else {
-                    // Show exact error from Shopify to debug
                     showToast("⚠️ Shopify Failed: " + data.message.substring(0, 30) + "...");
-                    console.error("Shopify Error Full:", data.message);
                 }
             } catch(e) {
-                console.error(e);
                 showToast("⚠️ Network Error");
             }
         }
 
-        function openNoteModal(id, note) {
+        function openNoteModal(id, note, isEdit = true) {
             document.getElementById('noteOrderId').value = id;
             document.getElementById('noteInput').value = note;
+            
+            // Adjust UI based on mode
+            if(isVoiding) {
+                 document.getElementById('noteTitle').innerText = "Void Order - Enter Reason";
+                 document.getElementById('btnSaveNote').innerText = "Confirm Void & Cancel";
+                 document.getElementById('btnSaveNote').style.backgroundColor = "#d82c0d"; // Red button
+                 document.getElementById('btnDeleteNote').style.display = "none";
+            } else {
+                 document.getElementById('noteTitle').innerText = "Update Note";
+                 document.getElementById('btnSaveNote').innerText = "Save";
+                 document.getElementById('btnSaveNote').style.backgroundColor = "var(--primary)";
+                 document.getElementById('btnDeleteNote').style.display = "block";
+            }
+
             document.getElementById('noteModal').style.display = 'flex';
         }
-        function saveNote() { updateSheet(document.getElementById('noteOrderId').value, 'note', document.getElementById('noteInput').value); closeModal('noteModal'); }
+        
+        async function saveNote() { 
+            let id = document.getElementById('noteOrderId').value;
+            let note = document.getElementById('noteInput').value;
+
+            if (isVoiding) {
+                if(!note.trim()) { showToast("Reason is required to Void"); return; }
+                
+                showToast("Cancelling Order...");
+                // Call cancel action
+                let url = `${SCRIPT_URL}?action=cancelShopifyOrder&orderId=${id}&note=${encodeURIComponent(note)}`;
+                try {
+                    let res = await fetch(url);
+                    let data = await res.json();
+                    if(data.status === 'success') {
+                         showToast("✅ Order Voided & Cancelled!");
+                         closeModal('noteModal');
+                         fetchSheetOrders(currentPage);
+                    } else {
+                         showToast("❌ " + data.message);
+                    }
+                } catch(e) { showToast("Error connecting"); }
+                
+                // Reset flag
+                isVoiding = false;
+            } else {
+                updateSheet(id, 'note', note); 
+                closeModal('noteModal'); 
+            }
+        }
+        
         function deleteNote() { updateSheet(document.getElementById('noteOrderId').value, 'note', ''); closeModal('noteModal'); }
+        
         function openAmountModal(id, amount) {
             document.getElementById('amountOrderId').value = id;
             document.getElementById('amountInput').value = amount;
