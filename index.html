@@ -108,8 +108,35 @@
         }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px;
         }
-        .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center;
+        
+        /* PRODUCT ITEM STYLES */
+        .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center; position: relative;
         }
+        
+        /* REMOVED STYLE */
+        .p-item.removed {
+            opacity: 0.6;
+        }
+        .p-item.removed .p-img {
+            filter: grayscale(100%);
+            border: 1px solid #ccc;
+        }
+        .removed-badge {
+            position: absolute;
+            top: 35px; /* Centered on image */
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 2;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
         .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px;
         border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
         .p-img:hover { transform: scale(1.05);
@@ -345,36 +372,26 @@
                 searchTimeout = setTimeout(() => { applyFilters(); }, 1000);
             });
 
-            // ADDED: Phone number formatting AND VALIDATION logic
             const cNumberInput = document.getElementById('cNumber');
             if(cNumberInput) {
                 cNumberInput.addEventListener('input', function(e) {
                     let value = e.target.value;
-                    
-                    // 1. Cleaning & Formatting
-                    value = value.replace(/[\s-]/g, ''); // Remove spaces/dashes
-
+                    value = value.replace(/[\s-]/g, ''); 
                     if (value.startsWith('+880')) {
                         value = '0' + value.substring(4);
                     } else if (value.startsWith('880')) {
                         value = '0' + value.substring(3);
                     }
-
-                    value = value.replace(/[^0-9]/g, ''); // Remove non-numbers
-                    e.target.value = value; // Update input value
-
-                    // 2. Validation Logic (Red/Green Border)
+                    value = value.replace(/[^0-9]/g, ''); 
+                    e.target.value = value; 
                     if (value.length === 0) {
-                        // Reset to default if empty
                         e.target.style.borderColor = '#babfc3';
                         e.target.style.borderWidth = '1px';
                     } else if (value.length === 11 && value.startsWith('01')) {
-                        // Valid: Green
-                        e.target.style.borderColor = '#2ecc71'; // Green color
+                        e.target.style.borderColor = '#2ecc71'; 
                         e.target.style.borderWidth = '2px';
                     } else {
-                        // Invalid: Red
-                        e.target.style.borderColor = '#e74c3c'; // Red color
+                        e.target.style.borderColor = '#e74c3c'; 
                         e.target.style.borderWidth = '2px';
                     }
                 });
@@ -395,9 +412,7 @@
             let dTo = document.getElementById('dateTo').value;
 
             let url = `${SCRIPT_URL}?action=getOrders&status=${encodeURIComponent(status)}`;
-            // Search Param passes as 'name' to code.gs, which now handles it as 'query'
             if(sid) url += `&name=${encodeURIComponent(sid)}`;
-            // Date params (Backend now adds time automatically)
             if(dFrom) url += `&created_at_min=${dFrom}`;
             if(dTo) url += `&created_at_max=${dTo}`;
 
@@ -409,7 +424,6 @@
                 document.getElementById('loader').style.display = 'none';
                 
                 if (data.status === 'success') {
-                    // Pass savedDetails map to renderOrders
                     renderOrders(data.orders, data.images, data.savedIds || [], data.savedDetails || {});
                     nextPageCursor = data.nextPage || "";
                     prevPageCursor = data.prevPage || "";
@@ -437,38 +451,35 @@
                 let productHtml = '';
                 let imageUrls = [];
 
-                // ----------------------------------------------------
-                // 1. Calculate All Vendors + Variants String
-                // ----------------------------------------------------
                 let vendorVariantStrings = [];
                 if (order.line_items) {
                      vendorVariantStrings = order.line_items.map(item => {
+                        // UPDATE: Skip if quantity is 0 (REMOVED THIS CHECK TO SHOW REMOVED ITEMS)
+                        // if (item.quantity < 1) return "";
+
                         let v = item.vendor || "";
-                        // Check if variant exists and is not default
                         let varTitle = (item.variant_title && item.variant_title !== 'Default Title' && item.variant_title !== null) ? item.variant_title : "";
                         
                         if (v && varTitle) {
-                            // If variant exists: "Vendor,Variant"
                             return `${v},${varTitle}`;
                         } else if (v) {
-                            // If no variant: "Vendor"
                             return v;
                         }
                         return "";
                     }).filter(s => s !== "");
                 }
                 
-                // Remove duplicates (e.g. if ordered 2x same item, only show once)
                 let uniqueVendorVariants = [...new Set(vendorVariantStrings)];
-                // Join with slash
                 let finalVendorString = uniqueVendorVariants.join('/');
-                // Escape quotes for HTML attribute safety
                 let safeVendorString = finalVendorString.replace(/'/g, "\\'");
 
 
                 // Collect images
                 if (order.line_items) {
                      order.line_items.forEach(item => {
+                         // UPDATE: Allow removed items (quantity 0)
+                         // if (item.quantity < 1) return;
+
                          if (item.product_id && images[item.product_id]) {
                              imageUrls.push(images[item.product_id]);
                          }
@@ -481,10 +492,13 @@
                  
                 let imgIndex = 0;
                 if(order.line_items) {
-                    order.line_items.forEach((item, index) => { // NOTE: Added 'index' here
+                    order.line_items.forEach((item, index) => { 
+                        // UPDATE: Don't skip quantity 0, but mark as Removed
+                        // if (item.quantity < 1) return;
+
                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
             
-                         let clickHandler = (images[item.product_id]) ?
+                        let clickHandler = (images[item.product_id]) ?
                         `onclick="showPreview(${allImagesStr}, ${imgIndex++})"` : '';
                         
                         let variantInfo = '';
@@ -492,42 +506,53 @@
                             variantInfo = `<div class="variant-text">${item.variant_title}</div>`;
                         }
                         
-                        // ------------------------------------------------
-                        // VENDOR LOGIC: ONLY ON FIRST ITEM (INDEX 0)
-                        // ------------------------------------------------
                         let vendorInfo = '';
                         if (item.vendor) {
                             if (index === 0) {
-                                // First Item: Show Copy Icon (Left) + Vendor Name
-                                // Use safeVendorString which now contains variants!
                                 vendorInfo = `
                                 <div class="vendor-text">
                                     <span class="vendor-copy-icon" onclick="copyToClipboard('${safeVendorString}')" title="Copy: ${safeVendorString}">📋</span>
                                     <span>${item.vendor}</span>
                                 </div>`;
                             } else {
-                                // Other Items: Show ONLY Vendor Name (No Icon)
                                 vendorInfo = `<div class="vendor-text">${item.vendor}</div>`;
                             }
                         }
 
-                        productHtml += `<div class="p-item">
+                        // NEW: Logic for Removed Item (SMART DETECTION)
+                        // Case 1: Quantity is literally 0 (Standard Shopify Edit)
+                        // Case 2: Quantity > 0 but Fulfillable is 0 AND it's not fulfilled (Refund/Restock edge cases)
+                        let isRemoved = false;
+                        if (item.quantity === 0) {
+                            isRemoved = true;
+                        } else if (item.fulfillable_quantity === 0 && !item.fulfillment_status) {
+                            // If nothing to fulfill and status is null (not fulfilled), it is likely removed/restocked
+                            isRemoved = true;
+                        }
+
+                        let itemClass = isRemoved ? "p-item removed" : "p-item";
+                        let removedBadge = isRemoved ? '<div class="removed-badge">REMOVED</div>' : '';
+
+                        productHtml += `<div class="${itemClass}">
+                            ${removedBadge}
                             <img src="${img}" class="p-img" ${clickHandler}>
                             <div style="font-weight:600; font-size:12px; margin-top:3px;">${item.quantity}x</div>
                                  ${variantInfo}
                             ${vendorInfo}
                         </div>`;
-                        });
+                    });
                 }
 
-                // Check if already listed
                 let isListed = savedIds.includes(String(order.order_number));
+                
+                // UPDATE: Use current_total_price if available, otherwise total_price
+                let displayAmount = order.current_total_price ? order.current_total_price : order.total_price;
+                
                 let addToSheetBtn = isListed ? 
                     `<button class="btn btn-disabled" disabled>Already Listed</button>` : 
-                    `<button class="btn" onclick="openAddModal('${order.order_number}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
-                // Status Badge
-                let status = order.financial_status ||
-                'pending';
+                    `<button class="btn" onclick="openAddModal('${order.order_number}', '${new Date(order.created_at).toLocaleDateString()}', '${displayAmount}')">Add to List</button>`;
+                
+                let status = order.financial_status || 'pending';
                 let statusClass = 'status-pending';
                 let statusText = 'Pending';
                 if (status === 'paid') { statusClass = 'status-paid'; statusText = 'Paid';
@@ -536,7 +561,6 @@
                 statusText = 'Voided'; }
                 
                 let statusBadge = `<span class="status-badge ${statusClass}">${statusText}</span>`;
-                // Download Button
                 let downloadBtn = '';
                 if (imageUrls.length === 1) {
                     downloadBtn = `<button class="btn-outline" onclick="downloadImages(['${imageUrls[0]}'])">Download Image</button>`;
@@ -544,7 +568,6 @@
                      downloadBtn = `<button class="btn-outline" onclick='downloadImages(${JSON.stringify(imageUrls)})'>Download All Images</button>`;
                 }
 
-                // Date Parsing
                 const d = new Date(order.created_at);
                 const day = String(d.getDate()).padStart(2, '0');
                 const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -552,12 +575,10 @@
                 const formattedDate = `${day}/${month}/${year}`;
                 const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
 
-                // CUSTOMER DETAILS LOGIC
                 let customerDetailsHtml = '';
                 if (isListed) {
                     const saved = savedDetails[String(order.order_number)];
                     if (saved) {
-                        // Function to copy: "#1234 Name"
                         const copyText = `#${order.order_number} ${saved.name}`;
                         customerDetailsHtml = `
                             <div class="customer-details-box">
@@ -591,8 +612,8 @@
                         </div>
 
                         <div class="order-actions">
-         
-                                   <div class="price-tag">${order.total_price}</div>
+                                   <!-- UPDATED: Use displayAmount variable here -->
+                                   <div class="price-tag">${displayAmount}</div>
                             ${addToSheetBtn}
                             ${statusBadge}
                         
@@ -606,7 +627,6 @@
         }
 
         async function copyToClipboard(text) {
-            // Strategy 1: Modern Clipboard API
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(text);
@@ -616,24 +636,17 @@
                     console.warn("Clipboard API failed, trying fallback...");
                 }
             }
-
-            // Strategy 2: Fallback using textarea (works in iframes/older browsers)
             try {
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
-                
-                // Make it invisible but part of DOM
                 textArea.style.position = "fixed";
                 textArea.style.left = "-9999px";
                 textArea.style.top = "0";
                 document.body.appendChild(textArea);
-                
                 textArea.focus();
                 textArea.select();
-                
                 const successful = document.execCommand('copy');
                 document.body.removeChild(textArea);
-                
                 if (successful) {
                     showToast("Copied: " + text);
                 } else {
