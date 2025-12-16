@@ -1,6 +1,6 @@
-CONFIGURATION
+// CONFIGURATION
 var SHOP_DOMAIN = "pff-premium-store.myshopify.com";
-var ACCESS_TOKEN = "xxxxxxx";
+var ACCESS_TOKEN = "xxxxxxxxxx"; // EKHANE APNAR TOKEN BOSHAN
 var SHEET_ID = "1ScwvIVZLisTSvrFxmUj51TSJ2XERz8mxfKP6jvY7XQw";
 
 function doGet(e) {
@@ -244,7 +244,7 @@ function updateSheetCell(orderId, colIndex, value) {
 }
 
 // ---------------------------------------------------------
-// 3. IMAGE FETCHING FUNCTIONS (UPDATED: REMOVED QUANTITY CHECK)
+// 3. IMAGE FETCHING FUNCTIONS (UPDATED: INCLUDE FULFILLABLE DATA)
 // ---------------------------------------------------------
 function fetchImagesForOrders(orders) {
   try {
@@ -290,10 +290,16 @@ function fetchImagesByOrderIds(orderIds) {
         if(o.line_items) {
           if(!orderNumberToItemsMap[oNum]) orderNumberToItemsMap[oNum] = [];
           o.line_items.forEach(function(item) {
-            // FETCH ALL (Even if quantity is 0)
             if (item.product_id) {
               productIds.push(item.product_id);
-              orderNumberToItemsMap[oNum].push({ pid: item.product_id, variant: item.variant_title, quantity: item.quantity });
+              // UPDATED: Include fulfillable_quantity and fulfillment_status for Smart Detection
+              orderNumberToItemsMap[oNum].push({ 
+                  pid: item.product_id, 
+                  variant: item.variant_title, 
+                  quantity: item.quantity,
+                  fulfillable_quantity: item.fulfillable_quantity,
+                  fulfillment_status: item.fulfillment_status
+              });
             }
           });
         }
@@ -314,7 +320,17 @@ function fetchImagesByOrderIds(orderIds) {
       for (var oNum in orderNumberToItemsMap) {
         var items = orderNumberToItemsMap[oNum];
         var finalItems = [];
-        items.forEach(function(item) { if (productImages[item.pid]) finalItems.push({ src: productImages[item.pid], variant: item.variant, quantity: item.quantity }); });
+        items.forEach(function(item) { 
+            if (productImages[item.pid]) {
+                finalItems.push({ 
+                    src: productImages[item.pid], 
+                    variant: item.variant, 
+                    quantity: item.quantity,
+                    fulfillable_quantity: item.fulfillable_quantity,
+                    fulfillment_status: item.fulfillment_status
+                }); 
+            }
+        });
         if (finalItems.length > 0) imagesMap[oNum] = finalItems;
       }
     }
