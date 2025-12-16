@@ -1,8 +1,6 @@
-// ===========================================
-// CONFIGURATION
-// ===========================================
+CONFIGURATION
 var SHOP_DOMAIN = "pff-premium-store.myshopify.com";
-var ACCESS_TOKEN = "nnn"; // EKHANE APNAR TOKEN BOSHAN
+var ACCESS_TOKEN = "xxxxxxx";
 var SHEET_ID = "1ScwvIVZLisTSvrFxmUj51TSJ2XERz8mxfKP6jvY7XQw";
 
 function doGet(e) {
@@ -31,7 +29,7 @@ function doGet(e) {
 // ---------------------------------------------------------
 function handleGetOrders(e) {
   try {
-    var savedDataMap = getSavedOrderDetailsMap(); 
+    var savedDataMap = getSavedOrderDetailsMap();
     var savedIds = Object.keys(savedDataMap);
 
     var limit = 50; 
@@ -50,7 +48,7 @@ function handleGetOrders(e) {
       if (/^\d+$/.test(q) && q.length < 10) {
         q = "#" + q;
       }
-      url += "&status=any&query=" + encodeURIComponent(q); 
+      url += "&status=any&query=" + encodeURIComponent(q);
     }
 
     if (params.created_at_min) url += "&created_at_min=" + params.created_at_min + "T00:00:00";
@@ -75,7 +73,6 @@ function handleGetOrders(e) {
 
     var orders = json.orders || [];
     var imagesMap = fetchImagesForOrders(orders);
-
     return sendJSON({
       status: "success",
       orders: orders,
@@ -140,7 +137,6 @@ function handleGetSheetOrders(e) {
     var hasMore = (offset + limit) < orderList.length;
 
     // --- AUTO SYNC LOGIC ---
-    // Check Shopify for these orders. If they are cancelled in Shopify but not in Sheet, update Sheet.
     syncCancelledOrders(pagedList, sheet);
     // -----------------------
 
@@ -167,25 +163,20 @@ function handleGetSheetOrders(e) {
 // ---------------------------------------------------------
 function syncCancelledOrders(orderList, sheet) {
   try {
-     // Fetch latest 250 cancelled orders from Shopify to check against the current page
      var options = { "method": "get", "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN }, "muteHttpExceptions":true };
      var url = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?status=cancelled&limit=250&fields=order_number,cancelled_at";
      var res = UrlFetchApp.fetch(url, options);
      var json = JSON.parse(res.getContentText());
      if (!json.orders) return;
-     
      var cancelledMap = {};
      json.orders.forEach(function(o) { cancelledMap[String(o.order_number)] = true; });
-
      orderList.forEach(function(o) {
-        // If Shopify says cancelled, but Sheet says NOT Void
         if (cancelledMap[o.id] && o.status !== "Void") {
-            sheet.getRange(o.row, 8).setValue("Void"); // Update Sheet Status
-            o.status = "Void"; // Update Response Object so UI shows it immediately
+            sheet.getRange(o.row, 8).setValue("Void"); 
+            o.status = "Void"; 
         }
      });
   } catch(e) {
-    // Ignore sync errors to prevent page load failure
   }
 }
 
@@ -193,16 +184,11 @@ function handleCancelShopifyOrder(e) {
   var p = e.parameter;
   var orderNumber = p.orderId;
   var note = p.note || "";
-
-  // 1. Find Real Shopify ID from Order Number
   var realId = findShopifyOrderId(orderNumber);
   if (!realId) return sendJSON({status: "error", message: "Order #" + orderNumber + " not found in Shopify"});
-
-  // 2. Call Cancel API
   try {
     var url = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders/" + realId + "/cancel.json";
-    // IMPORTANT: restock: false (Inventory will NOT increase)
-    var payload = { "email": false, "restock": false }; 
+    var payload = { "email": false, "restock": false };
     var options = {
       "method": "post",
       "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN, "Content-Type": "application/json" },
@@ -212,24 +198,20 @@ function handleCancelShopifyOrder(e) {
     var res = UrlFetchApp.fetch(url, options);
     var json = JSON.parse(res.getContentText());
 
-    // 3. Update Sheet if successful or already cancelled
     if (json.order || (json.errors && JSON.stringify(json.errors).indexOf('prior to this action') > -1)) {
-       // Update Status to Void
        updateSheetCell(orderNumber, 8, "Void");
-       // Update Note if provided
        if (note) updateSheetCell(orderNumber, 7, note);
-       
        return sendJSON({status: "success", message: "Order Cancelled & Voided"});
     } else {
        return sendJSON({status: "error", message: "Shopify Error: " + JSON.stringify(json.errors || json)});
     }
-  } catch(err) { return sendJSON({status: "error", message: err.toString()}); }
+  } catch(err) { return sendJSON({status: "error", message: err.toString()});
+  }
 }
 
 function findShopifyOrderId(orderNumber) {
   try {
     var options = { "method": "get", "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN }, "muteHttpExceptions": true };
-    // Try searching by name (usually #1234)
     var url = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=" + orderNumber + "&status=any&fields=id,order_number";
     var res = UrlFetchApp.fetch(url, options);
     var json = JSON.parse(res.getContentText());
@@ -237,7 +219,6 @@ function findShopifyOrderId(orderNumber) {
       var match = json.orders.find(function(o) { return String(o.order_number) === String(orderNumber); });
       if (match) return match.id;
     }
-    // Try with # prefix if needed
     var url2 = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=%23" + orderNumber + "&status=any&fields=id,order_number";
     var res2 = UrlFetchApp.fetch(url2, options);
     var json2 = JSON.parse(res2.getContentText());
@@ -246,7 +227,8 @@ function findShopifyOrderId(orderNumber) {
       if (match) return match.id;
     }
     return null;
-  } catch(e) { return null; }
+  } catch(e) { return null;
+  }
 }
 
 function updateSheetCell(orderId, colIndex, value) {
@@ -262,13 +244,20 @@ function updateSheetCell(orderId, colIndex, value) {
 }
 
 // ---------------------------------------------------------
-// 3. IMAGE FETCHING FUNCTIONS
+// 3. IMAGE FETCHING FUNCTIONS (UPDATED: REMOVED QUANTITY CHECK)
 // ---------------------------------------------------------
 function fetchImagesForOrders(orders) {
   try {
     var options = { "method": "get", "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN, "Content-Type": "application/json" }, "muteHttpExceptions": true };
     var productIds = [];
-    orders.forEach(function(o) { if(o.line_items) o.line_items.forEach(function(i) { if(i.product_id) productIds.push(i.product_id); }); });
+    orders.forEach(function(o) { 
+        if(o.line_items) {
+            o.line_items.forEach(function(i) { 
+                // FETCH ALL (Even if quantity is 0, so we can show "Removed" status)
+                if(i.product_id) productIds.push(i.product_id); 
+            }); 
+        }
+    });
     var uniqueIds = [...new Set(productIds)];
     var map = {};
     if (uniqueIds.length > 0) {
@@ -282,8 +271,7 @@ function fetchImagesForOrders(orders) {
       }
     }
     return map;
-  } catch(e) { return {};
-  }
+  } catch(e) { return {}; }
 }
 
 function fetchImagesByOrderIds(orderIds) {
@@ -302,10 +290,10 @@ function fetchImagesByOrderIds(orderIds) {
         if(o.line_items) {
           if(!orderNumberToItemsMap[oNum]) orderNumberToItemsMap[oNum] = [];
           o.line_items.forEach(function(item) {
+            // FETCH ALL (Even if quantity is 0)
             if (item.product_id) {
               productIds.push(item.product_id);
-              orderNumberToItemsMap[oNum].push({ pid: item.product_id, variant: item.variant_title, 
-              quantity: item.quantity });
+              orderNumberToItemsMap[oNum].push({ pid: item.product_id, variant: item.variant_title, quantity: item.quantity });
             }
           });
         }
@@ -351,9 +339,9 @@ function handleGetFulfillmentOrders(e) {
             date: data[i][0], 
             id: String(data[i][1]), 
             name: data[i][2], 
-            number: data[i][3], // ADDED: Phone Number
-            address: data[i][4], // ADDED: Address
-            amount: data[i][5], // ADDED: Amount
+            number: data[i][3],
+            address: data[i][4],
+            amount: data[i][5], 
             invoice: data[i][8] 
         });
       }
@@ -418,7 +406,7 @@ function handleMarkShopifyPaid(e) {
   var orderNumber = e.parameter.orderId;
   try {
     var options = { "method": "get", "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN, "Content-Type": "application/json" }, "muteHttpExceptions": true };
-    var searchUrl = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=" + orderNumber + "&status=any&fields=id,order_number,financial_status,transactions";
+    var searchUrl = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=" + orderNumber + "&status=any&fields=id,order_number,financial_status,total_price,current_total_price,transactions";
     var searchRes = UrlFetchApp.fetch(searchUrl, options);
     var searchJson = JSON.parse(searchRes.getContentText());
     
@@ -428,7 +416,7 @@ function handleMarkShopifyPaid(e) {
     }
 
     if (!order) {
-        var searchUrl2 = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=%23" + orderNumber + "&status=any&fields=id,order_number,financial_status,transactions";
+        var searchUrl2 = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders.json?name=%23" + orderNumber + "&status=any&fields=id,order_number,financial_status,total_price,current_total_price,transactions";
         var res2 = UrlFetchApp.fetch(searchUrl2, options);
         var json2 = JSON.parse(res2.getContentText());
         if (json2.orders && json2.orders.length > 0) {
@@ -439,8 +427,11 @@ function handleMarkShopifyPaid(e) {
     if (!order) return sendJSON({status: "error", message: "Order #" + orderNumber + " not found"});
     if (order.financial_status === 'paid') return sendJSON({status: "success", message: "Already Paid"});
     
+    // UPDATED: Use current_total_price if available, otherwise total_price
+    var amountToCapture = order.current_total_price ? order.current_total_price : order.total_price;
+
     var transUrl = "https://" + SHOP_DOMAIN + "/admin/api/2024-01/orders/" + order.id + "/transactions.json";
-    var payload = { "transaction": { "kind": "sale", "gateway": "manual", "status": "success", "amount": order.total_price } };
+    var payload = { "transaction": { "kind": "sale", "gateway": "manual", "status": "success", "amount": amountToCapture } };
     var postOptions = {
       "method": "post",
       "headers": { "X-Shopify-Access-Token": ACCESS_TOKEN, "Content-Type": "application/json" },
@@ -532,7 +523,8 @@ function handleUpdateCustomerOnly(e) {
   } catch (err) { return sendJSON({status: "error", message: err.toString()}); }
 }
 
-function handleGetOrderImages(e) { return sendJSON({status: "success", images: []}); }
+function handleGetOrderImages(e) { return sendJSON({status: "success", images: []});
+}
 
 function handleCheckCustomer(e) { 
   var p=e.parameter; var s=SpreadsheetApp.openById(SHEET_ID).getSheetByName("Customers").getDataRange().getValues();
@@ -548,7 +540,7 @@ function handleSaveOrder(e) {
   if(p.updateCustomer==='true') {
      var cd=cs.getDataRange().getValues();
      for(var i=1;i<cd.length;i++) if(String(cd[i][1])==String(p.cNumber)) { cs.getRange(i+1,1).setValue(p.cName); cs.getRange(i+1,3).setValue(p.cAddress); break;
-     }
+    }
   } else if(p.isNewCustomer==='true') cs.appendRow([p.cName,"'"+p.cNumber,p.cAddress]);
   os.appendRow([p.oDate,"'"+p.oID,p.cName,"'"+p.cNumber,p.cAddress,p.oAmount,"","Pending",""]);
   return sendJSON({status:"success"});
@@ -560,7 +552,7 @@ function getSavedOrderDetailsMap() {
     var data = sheet.getDataRange().getValues();
     var map = {};
     for (var i = 1; i < data.length; i++) {
-      var id = String(data[i][1]); 
+      var id = String(data[i][1]);
       map[id] = {
         name: data[i][2],
         phone: String(data[i][3]), 
@@ -573,4 +565,5 @@ function getSavedOrderDetailsMap() {
   }
 }
 
-function sendJSON(d) { return ContentService.createTextOutput(JSON.stringify(d)).setMimeType(ContentService.MimeType.JSON); }
+function sendJSON(d) { return ContentService.createTextOutput(JSON.stringify(d)).setMimeType(ContentService.MimeType.JSON);
+}
