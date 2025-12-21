@@ -6,7 +6,6 @@
     <title>PFF Premium Orders</title>
     <link rel="icon" type="image/png" href="logo.png">
     
-    <!-- PWA & Mobile Capable Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -74,8 +73,6 @@
         /* Card Styles (New Orders) */
         /* UPDATED CONTENT AREA TO FLOW NATURALLY */
         .content-area { 
-            /* flex: 1; removed so it doesn't force height */
-            /* overflow-y: auto; removed internal scroll */
             padding: 20px; 
             position: relative;
         }
@@ -171,7 +168,7 @@
         .img-preview img { max-width:90%; max-height:85%; border-radius:4px; }
         .preview-controls { position:absolute; top:20px; right:30px; }
         .close-preview { color:white; font-size:35px; cursor:pointer; }
-        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; }
+        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; user-select: none; z-index: 2010; }
         .img-nav:hover { background: rgba(0,0,0,0.6); }
         .prev-btn { left: 20px; } .next-btn { right: 20px; }
 
@@ -332,17 +329,14 @@
         </div>
     </div>
 
-    <!-- EDIT ORDER MODAL -->
     <div id="editOrderModal" class="modal">
         <div class="modal-box" style="width: 500px;">
             <span class="modal-close" onclick="closeModal('editOrderModal')">&times;</span>
             <div style="font-size:18px; font-weight:700; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">Edit Order Products</div>
             <input type="hidden" id="editOrderId">
             
-            <!-- Existing Items -->
             <div id="editOrderList" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
             
-            <!-- ADD Product Section -->
             <div style="border-top: 1px solid #eee; padding-top: 10px; margin-bottom: 15px;">
                 <label style="font-size:12px; font-weight:600; display:block; margin-bottom:5px;">Add Product</label>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
@@ -441,9 +435,9 @@
 
     <div id="imgPreview" class="img-preview" onclick="if(event.target === this) this.style.display='none'">
         <div class="preview-controls"><span class="close-preview" onclick="document.getElementById('imgPreview').style.display='none'">&times;</span></div>
-        <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1)">&#10094;</span>
+        <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1); event.stopPropagation();">&#10094;</span>
         <img id="previewImgSrc" src="">
-        <span class="img-nav next-btn" id="nextBtn" onclick="navigatePreview(1)">&#10095;</span>
+        <span class="img-nav next-btn" id="nextBtn" onclick="navigatePreview(1); event.stopPropagation();">&#10095;</span>
     </div>
 
     <script>
@@ -461,6 +455,15 @@
 
         window.onload = function() {
             applyFilters();
+            
+            // KEYBOARD NAVIGATION SUPPORT ADDED HERE
+            document.addEventListener('keydown', function(e) {
+                if(document.getElementById('imgPreview').style.display === 'flex') {
+                    if(e.key === 'ArrowLeft') navigatePreview(-1);
+                    if(e.key === 'ArrowRight') navigatePreview(1);
+                    if(e.key === 'Escape') document.getElementById('imgPreview').style.display = 'none';
+                }
+            });
         };
 
         function debounceSearch() {
@@ -545,8 +548,8 @@
                 let addBtn = isListed ? '' : `<button class="btn btn-sm" onclick="openAddModal('${id}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
 
                 let productInfoList = [];
-                let imageUrls = [];
-                let productHtml = '';
+                // Collection of ALL images for this order (for gallery support)
+                let orderAllImages = [];
                 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
@@ -558,18 +561,36 @@
                              }
                              productInfoList.push(v);
                          }
+                         // Collect images for gallery
+                         if(item.product_id && images[item.product_id]) {
+                             // Only add if not already in list to avoid duplicates (optional, but good)
+                             if(!orderAllImages.includes(images[item.product_id])) {
+                                 orderAllImages.push(images[item.product_id]);
+                             }
+                         }
                     });
                 }
+                
+                // Prepare JSON for onclick function (Escape quotes)
+                let orderImagesJson = JSON.stringify(orderAllImages).replace(/"/g, "&quot;");
                 let copyProductString = productInfoList.join('/');
+                let productHtml = '';
 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
-                         if(item.product_id && images[item.product_id]) imageUrls.push(images[item.product_id]);
-                         
                          let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
                          
-                         let clickEvent = images[item.product_id] ? `onclick="showPreview(['${images[item.product_id]}'], 0)"` : '';
+                         // Determine index of this image in the order's full gallery
+                         let imgIndex = -1;
+                         if(images[item.product_id]) {
+                             imgIndex = orderAllImages.indexOf(images[item.product_id]);
+                         }
+                         
+                         // If image exists, pass the FULL order gallery + current index
+                         let clickEvent = (imgIndex > -1) 
+                            ? `onclick="showPreview(${orderImagesJson}, ${imgIndex}); event.stopPropagation();"` 
+                            : '';
                          
                          productHtml += `
                          <div class="p-item ${isRemoved?'removed':''}">
@@ -583,8 +604,8 @@
                 }
                 
                 let dlBtn = '';
-                if(imageUrls.length > 0) {
-                    let dlArg = JSON.stringify([...new Set(imageUrls)]).replace(/"/g, "&quot;");
+                if(orderAllImages.length > 0) {
+                    let dlArg = JSON.stringify(orderAllImages).replace(/"/g, "&quot;");
                     dlBtn = `<button class="btn-outline" onclick="downloadImages(${dlArg})">Download Images</button>`;
                 }
                 
@@ -1229,4 +1250,3 @@
     </script>
 </body>
 </html>
-
