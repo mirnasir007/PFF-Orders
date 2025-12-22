@@ -393,7 +393,6 @@
         </div>
     </div>
     
-    <!-- NEW: Edit Customer Details Modal -->
     <div id="editCustomerModal" class="modal">
         <div class="modal-box">
              <span class="modal-close" onclick="closeModal('editCustomerModal')">&times;</span>
@@ -1178,7 +1177,18 @@
             document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
             
             try {
-                if(statuses.includes('Paid')) { await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); }
+                // UPDATE: Check functionality for Mark Paid
+                if(statuses.includes('Paid')) { 
+                    let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`);
+                    let data = await res.json();
+                    
+                    if(data.status === 'error') {
+                        showToast("Shopify Error: " + data.message);
+                        updateBtn.innerText = originalText;
+                        return; // Do not update sheet if shopify failed
+                    }
+                }
+
                 if(document.getElementById('chkVoid').checked) {
                     closeModal('statusModal');
                     isVoiding = true;
@@ -1195,6 +1205,8 @@
                     await updateSheet(id, 'status', statuses.join(', '));
                     closeModal('statusModal');
                 }
+            } catch(e) {
+                showToast("Connection Error");
             } finally {
                 updateBtn.innerText = originalText;
             }
