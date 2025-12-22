@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#008060">
-    <link rel="manifest" href='data:application/manifest+json,{"name": "PFF Premium","short_name": "PFF","start_url": ".","display": "standalone","background_color": "#f6f6f7","theme_color": "#008060","icons": [{"src": "https://cdn-icons-png.flaticon.com/512/1554/1554591.png","sizes": "192x192","type": "image/png"}]}'>
+    <link rel="manifest" href='data:application/manifest+json,{"name": "PFF Premium","short_name": "PFF","start_url": ".","display": "standalone","background_color": "#f6f6f7","theme_color": "#008060","icons": [{"src": "https://cdn-icons-png.flaticon.com/512/1554/1554591.png\",\"sizes\": "192x192\",\"type\": "image/png"}]}'>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -137,10 +137,74 @@
         .btn-edit-order { background: #e3f1df; color: #008060; border: 1px solid #c4f5cd; padding: 2px 6px; font-size: 11px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
         .btn-edit-order:hover { background: #d0e7cb; }
 
-        /* MODALS */
+        /* MODALS (Generic) */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative; max-height: 90vh; overflow-y: auto; }
+        
+        /* SPECIFIC STYLE FOR NOTE MODAL 
+           Matches user request: gray background, specific shadow, button colors
+        */
+        #noteModal {
+            background: rgba(0,0,0,0.3) !important; /* Lighter overlay */
+        }
+        #noteModal .modal-box { 
+            width: 600px; /* Fixed width */
+            max-width: 95%; 
+            background: #eaeaea; 
+            border-radius: 6px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+            padding: 20px;
+        }
+        #noteModal h3 {
+            margin: 0 0 15px;
+            font-size: 20px;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        #noteModal textarea {
+            width: 100%;
+            min-height: 90px; /* Adjusted height */
+            border: 1px solid #000;
+            border-radius: 4px;
+            padding: 8px 10px;
+            font-size: 14px;
+            resize: vertical;
+            box-sizing: border-box;
+            outline: none;
+        }
+        #noteModal .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        #noteModal .btn-custom {
+            padding: 6px 18px;
+            font-size: 14px;
+            border-radius: 4px;
+            border: 1px solid #999;
+            cursor: pointer;
+        }
+        #noteModal .btn-delete {
+            background: #e5e5e5;
+            color: #333;
+        }
+        #noteModal .btn-save {
+            background: #0b6e4f;
+            color: #fff;
+            border: none;
+        }
+        #noteModal .btn-save:hover {
+            background: #095c42;
+        }
+        #noteModal .modal-close {
+            top: 10px;
+            right: 15px;
+            color: #333;
+        }
+
+        /* Standard Modal Close */
         .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; }
+        
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
         .form-group input, .form-group textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #babfc3; border-radius: 4px;}
@@ -328,6 +392,30 @@
             </div>
         </div>
     </div>
+    
+    <!-- NEW: Edit Customer Details Modal -->
+    <div id="editCustomerModal" class="modal">
+        <div class="modal-box">
+             <span class="modal-close" onclick="closeModal('editCustomerModal')">&times;</span>
+             <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Edit Customer Info</h3>
+             <input type="hidden" id="ec_orderId">
+             <div class="form-group">
+                 <label>Name</label>
+                 <input type="text" id="ec_name">
+             </div>
+             <div class="form-group">
+                 <label>Phone</label>
+                 <input type="text" id="ec_phone">
+             </div>
+             <div class="form-group">
+                 <label>Address</label>
+                 <textarea id="ec_address" rows="3"></textarea>
+             </div>
+             <div style="text-align:right; margin-top:15px;">
+                 <button class="btn" onclick="saveOrderCustomerDetails()">Save Changes</button>
+             </div>
+        </div>
+    </div>
 
     <div id="editOrderModal" class="modal">
         <div class="modal-box" style="width: 500px;">
@@ -378,7 +466,7 @@
                 <label class="checkbox-item"><input type="checkbox" value="Product Entry" id="chkProductEntry"> Product Entry (Invoice Required)</label>
                 <label class="checkbox-item"><input type="checkbox" value="Void" id="chkVoid"> Void (Will Cancel Order)</label>
             </div>
-            <button class="btn" onclick="saveStatusUpdate()" style="width:100%">Update</button>
+            <button class="btn" id="btnUpdateStatus" onclick="saveStatusUpdate()" style="width:100%">Update</button>
         </div>
     </div>
 
@@ -391,7 +479,7 @@
             <input type="text" id="invoiceInput" placeholder="0xxxxxxxxxxxx" maxlength="13">
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn btn-danger" id="btnDeleteInv" onclick="deleteInvoice()" style="display:none; flex:1;">Delete</button>
-                <button class="btn" onclick="confirmInvoice()" style="flex:2;">Save</button>
+                <button class="btn" id="btnSaveInvoice" onclick="confirmInvoice()" style="flex:2;">Save</button>
             </div>
         </div>
     </div>
@@ -415,9 +503,9 @@
              <h3 id="noteTitle">Update Note</h3>
              <input type="hidden" id="noteOrderId">
              <textarea id="noteInput" rows="4"></textarea>
-             <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                 <button class="btn btn-secondary" id="btnDeleteNote" onclick="deleteNote()">Delete</button>
-                 <button class="btn" id="btnSaveNote" onclick="saveNote()">Save</button>
+             <div class="modal-footer">
+                 <button class="btn-custom btn-delete" id="btnDeleteNote" onclick="deleteNote()">Delete</button>
+                 <button class="btn-custom btn-save" id="btnSaveNote" onclick="saveNote()">Save</button>
              </div>
         </div>
     </div>
@@ -624,10 +712,12 @@
                         .replace(/"/g, '&quot;')
                         .replace(/\n/g, '\\n');
 
+                    // NEW: Edit Icon added next to Name
                     custHtml = `
                     <div class="customer-details-box">
                         <div class="cust-name-row">
                             <span>${saved.name}</span>
+                            <span class="edit-icon" title="Edit Customer Details" onclick="openEditCustomerModal('${id}', '${saved.name.replace(/'/g, "\\'")}', '${saved.phone}', '${saved.address.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')">✎</span>
                             <span class="copy-icon" onclick="copyToClipboard('${safeCopyPayload}')" title="Copy Details">📋</span>
                         </div>
                         <div class="cust-phone">${saved.phone}</div>
@@ -637,7 +727,11 @@
                 }
 
                 let extraActions = '';
-                if (isListed && saved.status && saved.status.toLowerCase().includes('product entry')) {
+                
+                // UPDATED: Show invoice if saved.invoice exists (regardless of status) OR status includes Product Entry
+                let showInvoice = (isListed && (saved.invoice || (saved.status && saved.status.toLowerCase().includes('product entry'))));
+                
+                if (showInvoice) {
                      if (saved.invoice) {
                          extraActions += `
                          <div class="invoice-section">
@@ -646,7 +740,12 @@
                              <span class="edit-icon" onclick="openInvoiceModal('${id}', '${saved.invoice}', true)">✎</span>
                          </div>`;
                      }
-                     extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
+                     
+                     // UPDATED: Hide fulfill button if status is Courier
+                     let isFulfilled = saved.status && saved.status.toLowerCase().includes('courier');
+                     if (!isFulfilled) {
+                         extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
+                     }
                 }
                 
                 let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount})">Edit</span>` : '';
@@ -676,6 +775,44 @@
                 </div>`;
                 container.innerHTML += card;
             });
+        }
+
+        // --- NEW: Edit Customer Logic ---
+        function openEditCustomerModal(id, name, phone, address) {
+            document.getElementById('ec_orderId').value = id;
+            document.getElementById('ec_name').value = name;
+            document.getElementById('ec_phone').value = phone;
+            document.getElementById('ec_address').value = address;
+            document.getElementById('editCustomerModal').style.display = 'flex';
+        }
+
+        async function saveOrderCustomerDetails() {
+            let id = document.getElementById('ec_orderId').value;
+            let name = document.getElementById('ec_name').value;
+            let phone = document.getElementById('ec_phone').value;
+            let address = document.getElementById('ec_address').value;
+            
+            let btn = document.querySelector('#editCustomerModal button');
+            let origText = btn.innerText;
+            btn.innerText = "Saving...";
+            
+            try {
+                let url = `${SCRIPT_URL}?action=updateOrderCustomer&oID=${id}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+                let res = await fetch(url);
+                let data = await res.json();
+                
+                if(data.status === 'success') {
+                    showToast("Customer info updated");
+                    closeModal('editCustomerModal');
+                    applyFilters(); // Refresh UI
+                } else {
+                    showToast("Error updating info");
+                }
+            } catch(e) {
+                showToast("Connection Error");
+            } finally {
+                btn.innerText = origText;
+            }
         }
 
         // --- EDIT ORDER LOGIC ---
@@ -924,26 +1061,35 @@
         async function checkCustomer() {
              let num = document.getElementById('cNumber').value;
              if(num.length !== 11) { alert("Please enter a valid 11-digit number."); return; }
-             let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`);
-             let data = await res.json();
-             document.getElementById('customerDetails').style.display = 'block';
-             document.getElementById('numWarning').innerText = "";
-             if(data.found) {
-                 document.getElementById('cName').value = data.name;
-                 document.getElementById('cAddress').value = data.address;
-                 isNewCustomer = false;
-                 document.getElementById('cName').readOnly = true;
-                 document.getElementById('cAddress').readOnly = true;
-                 document.getElementById('btnTriggerUpdate').style.display = 'block';
-                 document.getElementById('btnUpdateData').style.display = 'none';
-             } else {
-                 document.getElementById('cName').value = '';
-                 document.getElementById('cAddress').value = '';
-                 isNewCustomer = true;
-                 document.getElementById('cName').readOnly = false;
-                 document.getElementById('cAddress').readOnly = false;
-                 document.getElementById('btnTriggerUpdate').style.display = 'none';
-                 document.getElementById('btnUpdateData').style.display = 'none';
+             
+             let btn = document.getElementById('btnCheck');
+             let originalText = btn.innerText;
+             btn.innerText = "Checking...";
+             
+             try {
+                 let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`);
+                 let data = await res.json();
+                 document.getElementById('customerDetails').style.display = 'block';
+                 document.getElementById('numWarning').innerText = "";
+                 if(data.found) {
+                     document.getElementById('cName').value = data.name;
+                     document.getElementById('cAddress').value = data.address;
+                     isNewCustomer = false;
+                     document.getElementById('cName').readOnly = true;
+                     document.getElementById('cAddress').readOnly = true;
+                     document.getElementById('btnTriggerUpdate').style.display = 'block';
+                     document.getElementById('btnUpdateData').style.display = 'none';
+                 } else {
+                     document.getElementById('cName').value = '';
+                     document.getElementById('cAddress').value = '';
+                     isNewCustomer = true;
+                     document.getElementById('cName').readOnly = false;
+                     document.getElementById('cAddress').readOnly = false;
+                     document.getElementById('btnTriggerUpdate').style.display = 'none';
+                     document.getElementById('btnUpdateData').style.display = 'none';
+                 }
+             } finally {
+                 btn.innerText = originalText;
              }
         }
         
@@ -956,36 +1102,55 @@
         }
 
         async function performCustomerUpdate() {
-             let num = document.getElementById('cNumber').value;
-             let name = document.getElementById('cName').value;
-             let addr = document.getElementById('cAddress').value;
-             let url = `${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`;
-             await fetch(url);
-             showToast("Customer Data Updated");
-             document.getElementById('btnUpdateData').style.display = 'none';
-             document.getElementById('btnSave').style.display = 'inline-block';
-             document.getElementById('cName').readOnly = true;
-             document.getElementById('cAddress').readOnly = true;
+             let btn = document.getElementById('btnUpdateData');
+             let originalText = btn.innerText;
+             btn.innerText = "Updating...";
+
+             try {
+                 let num = document.getElementById('cNumber').value;
+                 let name = document.getElementById('cName').value;
+                 let addr = document.getElementById('cAddress').value;
+                 let url = `${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`;
+                 await fetch(url);
+                 showToast("Customer Data Updated");
+                 document.getElementById('btnUpdateData').style.display = 'none';
+                 document.getElementById('btnSave').style.display = 'inline-block';
+                 document.getElementById('cName').readOnly = true;
+                 document.getElementById('cAddress').readOnly = true;
+             } catch(e) {
+                 showToast("Update Failed");
+             } finally {
+                 btn.innerText = originalText;
+             }
         }
 
         async function saveToSheet() {
              let num = document.getElementById('cNumber').value;
              if(num.length !== 11) { alert("Invalid Number"); return; }
-             let p = {
-                 action: 'saveOrder',
-                 oID: document.getElementById('m_orderId').value,
-                 oDate: document.getElementById('m_orderDate').value,
-                 oAmount: document.getElementById('m_amount').value,
-                 cNumber: num,
-                 cName: document.getElementById('cName').value,
-                 cAddress: document.getElementById('cAddress').value,
-                 isNewCustomer: isNewCustomer
-             };
-             let qs = new URLSearchParams(p).toString();
-             await fetch(SCRIPT_URL + '?' + qs);
-             showToast("Saved to List");
-             closeModal('addModal');
-             applyFilters();
+             
+             let btn = document.getElementById('btnSave');
+             let originalText = btn.innerText;
+             btn.innerText = "Saving...";
+             
+             try {
+                 let p = {
+                     action: 'saveOrder',
+                     oID: document.getElementById('m_orderId').value,
+                     oDate: document.getElementById('m_orderDate').value,
+                     oAmount: document.getElementById('m_amount').value,
+                     cNumber: num,
+                     cName: document.getElementById('cName').value,
+                     cAddress: document.getElementById('cAddress').value,
+                     isNewCustomer: isNewCustomer
+                 };
+                 let qs = new URLSearchParams(p).toString();
+                 await fetch(SCRIPT_URL + '?' + qs);
+                 showToast("Saved to List");
+                 closeModal('addModal');
+                 applyFilters();
+             } finally {
+                 btn.innerText = originalText;
+             }
         }
 
         function openStatusModal(id, cur) {
@@ -1005,23 +1170,33 @@
         async function saveStatusUpdate() {
             let id = document.getElementById('statusOrderId').value;
             let statuses = [];
+            let updateBtn = document.getElementById('btnUpdateStatus');
+            let originalText = updateBtn.innerText;
+            
+            updateBtn.innerText = "Processing...";
+            
             document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
-            if(statuses.includes('Paid')) { await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); }
-            if(document.getElementById('chkVoid').checked) {
-                closeModal('statusModal');
-                isVoiding = true;
-                openNoteModal(id, '', false); 
-                return;
-            }
-            if(document.getElementById('chkProductEntry').checked) {
-                closeModal('statusModal');
-                pendingStatusUpdate = { id: id, statuses: statuses };
-                openInvoiceModal(id, '');
-                return;
-            }
-            if(statuses.length > 0) {
-                await updateSheet(id, 'status', statuses.join(', '));
-                closeModal('statusModal');
+            
+            try {
+                if(statuses.includes('Paid')) { await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); }
+                if(document.getElementById('chkVoid').checked) {
+                    closeModal('statusModal');
+                    isVoiding = true;
+                    openNoteModal(id, '', false); 
+                    return;
+                }
+                if(document.getElementById('chkProductEntry').checked) {
+                    closeModal('statusModal');
+                    pendingStatusUpdate = { id: id, statuses: statuses };
+                    openInvoiceModal(id, '');
+                    return;
+                }
+                if(statuses.length > 0) {
+                    await updateSheet(id, 'status', statuses.join(', '));
+                    closeModal('statusModal');
+                }
+            } finally {
+                updateBtn.innerText = originalText;
             }
         }
 
@@ -1029,38 +1204,55 @@
              document.getElementById('noteOrderId').value = id;
              document.getElementById('noteInput').value = note;
              if(isVoiding) {
-                 document.getElementById('noteTitle').innerText = "Reason for Voiding";
+                 document.getElementById('noteTitle').innerText = "Reason for Voiding #" + id;
                  document.getElementById('btnSaveNote').innerText = "Void & Cancel";
                  document.getElementById('btnSaveNote').style.background = "#d82c0d";
                  document.getElementById('btnDeleteNote').style.display = 'none';
              } else {
-                 document.getElementById('noteTitle').innerText = "Update Note";
+                 document.getElementById('noteTitle').innerText = "Update Note #" + id;
                  document.getElementById('btnSaveNote').innerText = "Save";
-                 document.getElementById('btnSaveNote').style.background = "var(--primary)";
+                 document.getElementById('btnSaveNote').style.background = "#0b6e4f";
                  document.getElementById('btnDeleteNote').style.display = 'block';
              }
              document.getElementById('noteModal').style.display = 'flex';
         }
 
         async function saveNote() {
+            let btn = document.getElementById('btnSaveNote');
+            let originalText = btn.innerText;
+            btn.innerText = "Saving...";
+            
             let id = document.getElementById('noteOrderId').value;
             let note = document.getElementById('noteInput').value;
-            if(isVoiding) {
-                if(!note) { showToast("Reason required"); return; }
-                await fetch(`${SCRIPT_URL}?action=cancelShopifyOrder&orderId=${id}&note=${encodeURIComponent(note)}`);
-                showToast("Order Cancelled & Voided");
-                isVoiding = false;
-            } else {
-                await updateSheet(id, 'note', note);
+            
+            try {
+                if(isVoiding) {
+                    if(!note) { showToast("Reason required"); return; }
+                    await fetch(`${SCRIPT_URL}?action=cancelShopifyOrder&orderId=${id}&note=${encodeURIComponent(note)}`);
+                    showToast("Order Cancelled & Voided");
+                    isVoiding = false;
+                } else {
+                    await updateSheet(id, 'note', note);
+                }
+                closeModal('noteModal');
+                applyFilters();
+            } finally {
+                btn.innerText = originalText;
             }
-            closeModal('noteModal');
-            applyFilters();
         }
 
         async function deleteNote() {
-            let id = document.getElementById('noteOrderId').value;
-            await updateSheet(id, 'note', '');
-            closeModal('noteModal');
+            let btn = document.getElementById('btnDeleteNote');
+            let originalText = btn.innerText;
+            btn.innerText = "Deleting...";
+            
+            try {
+                let id = document.getElementById('noteOrderId').value;
+                await updateSheet(id, 'note', '');
+                closeModal('noteModal');
+            } finally {
+                btn.innerText = originalText;
+            }
         }
 
         function openInvoiceModal(id, val, isEdit = false) {
@@ -1080,20 +1272,29 @@
         }
 
         async function confirmInvoice() {
+             let btn = document.getElementById('btnSaveInvoice');
+             let originalText = btn.innerText;
+             btn.innerText = "Saving...";
+
              let id = document.getElementById('invOrderId').value;
              let inv = document.getElementById('invoiceInput').value;
-             if(inv.length !== 13) { showToast("13 digits required"); return; }
-             if(pendingStatusUpdate) {
-                 let s = pendingStatusUpdate.statuses.join(', ');
-                 if(s) s += ", ";
-                 s += "Product Entry";
-                 await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`);
-                 pendingStatusUpdate = null;
-             } else {
-                 await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`);
+             
+             try {
+                 if(inv.length !== 13) { showToast("13 digits required"); return; }
+                 if(pendingStatusUpdate) {
+                     let s = pendingStatusUpdate.statuses.join(', ');
+                     if(s) s += ", ";
+                     s += "Product Entry";
+                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`);
+                     pendingStatusUpdate = null;
+                 } else {
+                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`);
+                 }
+                 closeModal('invoiceModal');
+                 applyFilters();
+             } finally {
+                 btn.innerText = originalText;
              }
-             closeModal('invoiceModal');
-             applyFilters();
         }
 
         function openConfirmModal(msg, callback) {
@@ -1108,6 +1309,10 @@
 
         function openFulfillModal(id) {
              document.getElementById('fOrderId').value = id;
+             // CLEAR INPUTS ON OPEN
+             document.getElementById('trackNum').value = '';
+             document.getElementById('trackLink').value = '';
+             
              document.getElementById('fulfillModal').style.display = 'flex';
         }
         
@@ -1120,6 +1325,11 @@
              await fetch(`${SCRIPT_URL}?action=fulfillOrder&orderId=${id}&trackingNum=${num}&trackingUrl=${encodeURIComponent(link)}`);
              showToast("Fulfilled");
              document.getElementById('btnConfirmFulfill').innerText = "Confirm";
+             
+             // Clear inputs after submit as well (double safety)
+             document.getElementById('trackNum').value = '';
+             document.getElementById('trackLink').value = '';
+             
              closeModal('fulfillModal');
              applyFilters();
         }
