@@ -1,5 +1,5 @@
-var SHOP_DOMAIN = "pff-premium-store.myshopify.com";
-var ACCESS_TOKEN = "xxxxxxxxxx"; // YOUR TOKEN
+var SHOP_DOMAIN = "stoe-name.myshopify.com";
+var ACCESS_TOKEN = "xxxxxxxxxxx"; // YOUR TOKEN
 var SHEET_ID = "xxxxxxxxxxx";
 
 function doGet(e) {
@@ -25,6 +25,9 @@ function doGet(e) {
   // --- NEW EDIT ACTIONS ---
   if (action === "searchProducts") return handleSearchProducts(e);
   if (action === "editShopifyOrder") return handleEditShopifyOrder(e);
+  
+  // --- NEW: UPDATE ORDER CUSTOMER DETAILS ---
+  if (action === "updateOrderCustomer") return handleUpdateOrderCustomer(e);
 
   return sendJSON({status: "error", message: "Invalid Action"});
 }
@@ -197,14 +200,13 @@ function handleGetSheetOrders(e) {
 }
 
 // ---------------------------------------------------------
-// UPDATED: SEARCH PRODUCTS (GRAPHQL - Name, SKU, Type)
+// SEARCH PRODUCTS (GRAPHQL - Name, SKU, Type)
 // ---------------------------------------------------------
 function handleSearchProducts(e) {
   var q = e.parameter.q;
   if(!q) return sendJSON({status: "error", message: "Query missing"});
   
   try {
-     // Prepare wildcard search term
      var term = "*" + q + "*";
      var searchString = "title:" + term + " OR sku:" + term + " OR product_type:" + term;
 
@@ -259,7 +261,7 @@ function handleSearchProducts(e) {
 }
 
 // ---------------------------------------------------------
-// NEW: EDIT SHOPIFY ORDER (GRAPHQL)
+// EDIT SHOPIFY ORDER (GRAPHQL)
 // ---------------------------------------------------------
 function handleEditShopifyOrder(e) {
   var p = e.parameter;
@@ -598,6 +600,38 @@ function handleUpdateCustomerOnly(e) {
       }
     }
     return sendJSON({status: found ? "success" : "error", message: found ? "Updated!" : "Not found"});
+  } catch (err) { return sendJSON({status: "error", message: err.toString()}); }
+}
+
+// ---------------------------------------------------------
+// NEW: UPDATE CUSTOMER DETAILS FOR A SPECIFIC ORDER
+// ---------------------------------------------------------
+function handleUpdateOrderCustomer(e) {
+  try {
+    var p = e.parameter;
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName("Orders");
+    var data = sheet.getDataRange().getValues();
+    var found = false;
+    
+    // Find the row with matching Order ID (Column B / index 1)
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][1]) == String(p.oID)) {
+         var row = i + 1;
+         // Update Name (Col C/3), Number (Col D/4), Address (Col E/5)
+         sheet.getRange(row, 3).setValue(p.name);
+         sheet.getRange(row, 4).setValue("'" + p.phone); // Add apostrophe to force string for phone numbers
+         sheet.getRange(row, 5).setValue(p.address);
+         found = true; 
+         break;
+      }
+    }
+    
+    if(found) {
+        return sendJSON({status: "success", message: "Customer details updated for Order #" + p.oID});
+    } else {
+        return sendJSON({status: "error", message: "Order ID not found in sheet"});
+    }
   } catch (err) { return sendJSON({status: "error", message: err.toString()}); }
 }
 
