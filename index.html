@@ -499,10 +499,14 @@
                              productInfoList.push(v);
                          }
                          if(item.product_id && images[item.product_id]) {
-                             let existing = orderGallery.find(g => g.src === images[item.product_id]);
+                             // Correctly extract src from object or string
+                             let imgData = images[item.product_id];
+                             let imgSrc = (typeof imgData === 'object' && imgData.src) ? imgData.src : imgData;
+                             
+                             let existing = orderGallery.find(g => g.src === imgSrc);
                              if(!existing) {
                                  orderGallery.push({
-                                     src: images[item.product_id],
+                                     src: imgSrc,
                                      title: item.title,
                                      variant: item.variant_title || '',
                                      price: item.price
@@ -518,7 +522,20 @@
 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
-                         let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                         // Extract Image and Type
+                         let imgData = images[item.product_id];
+                         let img = 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                         let pType = '';
+                         
+                         if(imgData) {
+                             if(typeof imgData === 'object') {
+                                 img = imgData.src || img;
+                                 pType = imgData.type || '';
+                             } else {
+                                 img = imgData; // Legacy support
+                             }
+                         }
+
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
                          if(isOrderVoid) isRemoved = true; 
 
@@ -533,6 +550,7 @@
                             <img src="${img}" class="p-img" ${clickEvent}>
                             <div style="font-weight:600;margin-top:3px;">${item.quantity}x</div>
                             <div class="variant-text">${item.variant_title || ''}</div>
+                            ${pType ? `<div style="font-size:9px; color:#555; margin-top:2px;">${pType}</div>` : ''}
                             <div class="vendor-text">${item.vendor}</div>
                             <div class="price-text">${item.price}</div>
                          </div>`;
@@ -570,7 +588,9 @@
                 }
 
                 let extraActions = '';
+                // NEW LOGIC: Show Invoice if exists or Product Entry status
                 let showInvoice = (isListed && (saved.invoice || (saved.status && saved.status.toLowerCase().includes('product entry'))));
+                
                 if (showInvoice) {
                      if (saved.invoice) {
                          extraActions += `
@@ -580,10 +600,15 @@
                              <span class="edit-icon" onclick="openInvoiceModal('${id}', '${saved.invoice}', true)">✎</span>
                          </div>`;
                      }
-                     let isFulfilled = saved.status && saved.status.toLowerCase().includes('courier');
-                     if (!isFulfilled) {
-                         extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
-                     }
+                }
+
+                // NEW STRICT LOGIC for Fulfill Button
+                if (isListed && saved.status) {
+                    let sLower = saved.status.toLowerCase();
+                    // Show fulfill button ONLY if status has 'product entry' and is not 'courier'
+                    if (sLower.includes('product entry') && !sLower.includes('courier')) {
+                        extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
+                    }
                 }
                 
                 let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
@@ -631,7 +656,13 @@
                     let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
                     if(isOrderVoid) isRemoved = true; 
                     currentEditOrderItems.push({ ...item, removed: isRemoved, restock: false, isNew: false });
-                    let imgUrl = (gl_images && gl_images[item.product_id]) ? gl_images[item.product_id] : 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                    
+                    let imgData = (gl_images && gl_images[item.product_id]) ? gl_images[item.product_id] : null;
+                    let imgUrl = 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
+                    if(imgData) {
+                         imgUrl = (typeof imgData === 'object') ? imgData.src : imgData;
+                    }
+
                     renderEditRow(idx, item.name, item.variant_title, item.quantity, item.price, imgUrl, isRemoved);
                 });
             }
