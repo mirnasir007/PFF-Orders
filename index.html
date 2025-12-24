@@ -10,40 +10,26 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#008060">
-    <link rel="manifest" href='data:application/manifest+json,{"name": "PFF Premium","short_name": "PFF","start_url": ".","display": "standalone","background_color": "#f6f6f7","theme_color": "#008060","icons": [{"src": "https://cdn-icons-png.flaticon.com/512/1554/1554591.png\",\"sizes\": "192x192\",\"type\": "image/png"}]}'>
+    <link rel="manifest" href='data:application/manifest+json,{"name": "PFF Premium","short_name": "PFF","start_url": ".","display": "standalone","background_color": "#f6f6f7","theme_color": "#008060","icons": [{"src": "https://cdn-icons-png.flaticon.com/512/1554/1554591.png","sizes": "192x192","type": "image/png"}]}'>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #008060; --bg: #f6f6f7; --white: #ffffff; --text: #202223; --sidebar-width: 240px; }
         body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
-        
-        /* ZOOM REQUIREMENT */
-        .zoom-container {
-             width: 100%;
-             height: 100%;
-             display: flex;
-             zoom: 80%; /* CSS Zoom */
-        }
-
+        .zoom-container { width: 100%; height: 100%; display: flex; zoom: 80%; }
         .sidebar { width: var(--sidebar-width); background: var(--white); border-right: 1px solid #e1e3e5; display: flex; flex-direction: column; padding: 20px 0; flex-shrink: 0; }
         .brand { font-size: 20px; font-weight: 700; color: var(--primary); padding: 0 20px 20px; border-bottom: 1px solid #eee; margin-bottom: 10px; }
-        
         .menu-item { padding: 12px 20px; cursor: pointer; font-weight: 500; color: #5c5f62; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
         .menu-item:hover { background: #f1f2f3; color: var(--primary); }
         .menu-item.active { background: #edfffa; color: var(--primary); font-weight: 600; border-left: 3px solid var(--primary); }
-        
-        /* UPDATED MAIN CONTAINER TO SCROLL */
-        .main { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            overflow-y: auto; /* ALLOWS MAIN SCROLL (Unfreezes Top Bar) */
-            position: relative; 
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .top-bar { background: var(--white); padding: 15px 20px; border-bottom: 1px solid #e1e3e5; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex-shrink: 0; }
-        
+        .main { flex: 1; display: flex; flex-direction: column; position: relative; -webkit-overflow-scrolling: touch; }
+        .loading-bar-container { position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: transparent; z-index: 200; pointer-events: none; }
+        .loading-bar { height: 100%; width: 0; background: var(--primary); transition: width 0.3s ease; }
+        .loading-bar.active { animation: progressIndeterminate 1.5s infinite linear; }
+        @keyframes progressIndeterminate { 0% { left: 0; width: 0; } 50% { left: 0; width: 50%; } 100% { left: 100%; width: 0; } }
+        .top-bar { background: var(--white); padding: 15px 20px; border-bottom: 1px solid #e1e3e5; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex-shrink: 0; position: sticky; top: 0; z-index: 100; }
+        .mobile-menu-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; padding: 5px; color: var(--text); }
+        .filter-options { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; flex: 1; }
         .input-group { display: flex; align-items: center; gap: 5px; }
         input, select { padding: 8px 12px; border: 1px solid #babfc3; border-radius: 4px; font-size: 14px; outline: none; }
         input:focus { border-color: var(--primary); }
@@ -53,66 +39,34 @@
         .btn-secondary:hover { background: #f6f6f7; }
         .btn-danger { background: #d82c0d; color: white; border: none; }
         .btn-sm { padding: 4px 8px; font-size: 11px; margin-top: 5px; }
-        
-        /* Excel Button */
         .btn-export { background: #107c41; color: white; display: flex; align-items: center; gap: 5px; margin-left: 10px; }
         .btn-export:hover { background: #0b5c30; }
-
-        /* Status Badges */
         .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; display: inline-block; cursor: default; }
         .status-badge.clickable { cursor: pointer; border: 1px solid transparent; }
         .status-badge.clickable:hover { border-color: #999; }
-        
         .status-paid { background: #c4f5cd; color: #005c26; }
         .status-pending { background: #ffebd3; color: #8a6116; }
         .status-voided { background: #ffe5e5; color: #d82c0d; }
         .status-product-entry { background: #e3f1df; color: #202223; border: 1px solid #c4f5cd; }
-        .status-hold { background: #fff4e5; color: #663c00; border: 1px solid #fed28c; }
+        .status-courier { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .status-void { background: #ffe5e5; color: #d82c0d; border: 1px solid #ffcccc; }
-
-        /* Card Styles (New Orders) */
-        /* UPDATED CONTENT AREA TO FLOW NATURALLY */
-        .content-area { 
-            padding: 20px; 
-            position: relative;
-        }
-        
+        .content-area { padding: 20px; position: relative; flex: 1; overflow-y: auto; }
         .order-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid var(--primary); }
         .order-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .header-left { display: flex; gap: 20px; align-items: flex-start; flex: 1; }
         .info-block { display: flex; flex-direction: column; }
         .order-id { font-weight: 700; font-size: 16px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         .order-date { font-size: 12px; color: #6d7175; }
-        
         .customer-details-box { display: flex; flex-direction: column; font-size: 13px; color: #333; line-height: 1.4; border-left: 2px solid #eee; padding-left: 10px; }
         .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
         .copy-icon { cursor: pointer; font-size: 14px; color: #555; transition: 0.2s; padding: 2px; border-radius: 3px; }
         .copy-icon:hover { background: #eee; color: #000; }
         .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px; }
         .cust-addr { font-size: 12px; color: #666; margin-top: 2px; }
-        
-        /* Note Styling in New Orders */
-        .saved-note { 
-            font-size: 12px; 
-            color: #d82c0d; 
-            font-weight: 600; 
-            margin-top: 6px; 
-            white-space: nowrap; 
-            overflow: hidden;    
-            text-overflow: ellipsis; 
-            cursor: pointer; 
-            border: 1px dashed #d82c0d; 
-            padding: 2px 5px; 
-            border-radius: 4px; 
-            max-width: 100%; 
-            display: block;
-        }
+        .saved-note { font-size: 12px; color: #d82c0d; font-weight: 600; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; border: 1px dashed #d82c0d; padding: 2px 5px; border-radius: 4px; max-width: 100%; display: block; }
         .saved-note:hover { background: #fff5f5; }
-
         .order-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .price-tag { font-weight: 700; font-size: 15px; }
-        
-        /* Product Grid */
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px; }
         .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center; position: relative; }
         .p-item.removed { opacity: 0.6; }
@@ -122,198 +76,77 @@
         .p-img:hover { transform: scale(1.05); }
         .variant-text { font-size: 10px; color: #555; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px; }
         .vendor-text { font-size: 9px; color: #777; margin-top: 2px; font-weight: 500; font-style: italic; }
-        
-        /* ENTRY AMOUNT DISPLAY */
+        .price-text { font-size: 10px; color: var(--primary); font-weight: 700; margin-top: 2px; }
         .entry-amount-display { font-size: 13px; font-weight: 600; color: #008060; background: #e3f1df; padding: 6px 10px; border-radius: 4px; border: 1px solid #c4f5cd; white-space: nowrap; margin-left: 10px; }
-
-        /* Invoice & Buttons in Card */
         .btn-outline { background: white; border: 1px solid #babfc3; color: #333; font-size: 11px; padding: 4px 8px; margin-top: 5px; cursor: pointer; border-radius: 4px; font-weight: 500; }
         .btn-outline:hover { background: #f6f6f7; border-color: #8c9196; }
-        
         .invoice-section { margin-top: 5px; font-size: 12px; font-weight: 600; color: #008060; display: flex; align-items: center; gap: 5px; }
         .edit-icon { cursor: pointer; color: #555; margin-left: 5px; font-size: 14px; padding: 2px; border-radius: 3px; }
         .edit-icon:hover { background: #eee; color: #008060; }
-        
         .btn-edit-order { background: #e3f1df; color: #008060; border: 1px solid #c4f5cd; padding: 2px 6px; font-size: 11px; border-radius: 4px; cursor: pointer; margin-left: 5px; }
         .btn-edit-order:hover { background: #d0e7cb; }
-
-        /* MODALS (Generic) */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-box { background: white; width: 400px; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); position: relative; max-height: 90vh; overflow-y: auto; }
-        
-        /* SPECIFIC STYLE FOR NOTE MODAL 
-           Matches user request: gray background, specific shadow, button colors
-        */
-        #noteModal {
-            background: rgba(0,0,0,0.3) !important; /* Lighter overlay */
-        }
-        #noteModal .modal-box { 
-            width: 600px; /* Fixed width */
-            max-width: 95%; 
-            background: #eaeaea; 
-            border-radius: 6px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-            padding: 20px;
-        }
-        #noteModal h3 {
-            margin: 0 0 15px;
-            font-size: 20px;
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-        #noteModal textarea {
-            width: 100%;
-            min-height: 90px; /* Adjusted height */
-            border: 1px solid #000;
-            border-radius: 4px;
-            padding: 8px 10px;
-            font-size: 14px;
-            resize: vertical;
-            box-sizing: border-box;
-            outline: none;
-        }
-        #noteModal .modal-footer {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 15px;
-        }
-        #noteModal .btn-custom {
-            padding: 6px 18px;
-            font-size: 14px;
-            border-radius: 4px;
-            border: 1px solid #999;
-            cursor: pointer;
-        }
-        #noteModal .btn-delete {
-            background: #e5e5e5;
-            color: #333;
-        }
-        #noteModal .btn-save {
-            background: #0b6e4f;
-            color: #fff;
-            border: none;
-        }
-        #noteModal .btn-save:hover {
-            background: #095c42;
-        }
-        #noteModal .modal-close {
-            top: 10px;
-            right: 15px;
-            color: #333;
-        }
-
-        /* Standard Modal Close */
         .modal-close { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; }
-        
+        #noteModal { background: rgba(0,0,0,0.3) !important; }
+        #noteModal .modal-box { width: 600px; max-width: 95%; background: #eaeaea; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); padding: 20px; }
+        #noteModal textarea { width: 100%; min-height: 90px; border: 1px solid #000; border-radius: 4px; padding: 8px 10px; font-size: 14px; resize: vertical; box-sizing: border-box; outline: none; }
+        #noteModal .modal-footer { display: flex; justify-content: space-between; margin-top: 15px; }
+        #noteModal .btn-custom { padding: 6px 18px; font-size: 14px; border-radius: 4px; border: 1px solid #999; cursor: pointer; }
+        #noteModal .btn-delete { background: #e5e5e5; color: #333; }
+        #noteModal .btn-save { background: #0b6e4f; color: #fff; border: none; }
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
         .form-group input, .form-group textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #babfc3; border-radius: 4px;}
         .checkbox-group { display: flex; flex-direction: column; gap: 10px; margin: 15px 0; }
         .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
-        
-        /* Edit Order Modal Specifics */
         .edit-item-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .edit-item-row img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; }
+        .edit-item-row img { width: 40px; height: 40px; border-radius: 4px; object-fit: cover; cursor: pointer; }
         .edit-item-info { flex: 1; font-size: 12px; }
         .edit-item-price { font-weight: 700; font-size: 12px; width: 60px; text-align: right; }
         .edit-item-actions { display: flex; align-items: center; gap: 8px; }
         .removed-text { text-decoration: line-through; color: #999; }
         .restock-label { font-size: 10px; display: flex; align-items: center; gap: 3px; cursor: pointer; }
-        
-        /* Search Product Result Style */
         .search-result-item { display: flex; gap: 10px; padding: 8px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; align-items: center; }
         .search-result-item img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; cursor: pointer; }
         .search-result-info { flex: 1; font-size: 12px; }
-
         #confirmModal .modal-box { max-width: 350px; text-align: center; }
-
-        /* IMage Preview */
-        .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; }
-        .img-preview img { max-width:90%; max-height:85%; border-radius:4px; }
-        .preview-controls { position:absolute; top:20px; right:30px; }
-        .close-preview { color:white; font-size:35px; cursor:pointer; }
-        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px; user-select: none; z-index: 2010; }
+        .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; touch-action: none; flex-direction: column; cursor: pointer; }
+        .preview-content { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; pointer-events: none; }
+        .preview-content img { max-width: 100%; max-height: 90vh; border-radius:0; transition: transform 0.2s ease; cursor: zoom-in; object-fit: contain; pointer-events: auto; }
+        .preview-content img.zoomed { cursor: move; cursor: grab; }
+        .preview-content img.zoomed:active { cursor: grabbing; }
+        .close-preview { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 2020; }
+        .img-nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 40px; color: white; cursor: pointer; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 5px; user-select: none; z-index: 2010; }
         .img-nav:hover { background: rgba(0,0,0,0.6); }
-        .prev-btn { left: 20px; } .next-btn { right: 20px; }
-
-        /* Toast */
+        .prev-btn { left: 10px; } .next-btn { right: 10px; }
+        .img-caption { width: 100%; background: rgba(0,0,0,0.8); color: #fff; padding: 15px; text-align: center; font-size: 13px; z-index: 2010; cursor: default; }
+        .img-caption-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #4effcd; }
         #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-
-        /* --- MOBILE OPTIMIZATIONS (APK MODE) --- */
         @media screen and (max-width: 768px) {
-            .zoom-container {
-                zoom: 1; /* Reset zoom for mobile */
-                flex-direction: column;
-            }
-            .sidebar {
-                display: none; /* Hide sidebar to save space */
-            }
-            .main {
-                width: 100%;
-                height: 100vh;
-                overflow-y: auto; /* Allow Scroll for Main on Mobile */
-            }
-            .top-bar {
-                flex-direction: column;
-                gap: 10px;
-                padding: 10px;
-                align-items: stretch;
-            }
-            .top-bar input, .top-bar select {
-                width: 100% !important;
-                box-sizing: border-box;
-            }
-            .input-group {
-                width: 100%;
-                justify-content: space-between;
-            }
-            .input-group input { width: 45% !important; }
-            
-            .content-area {
-                padding: 10px;
-                padding-bottom: 80px; /* Space for bottom scroll */
-                overflow: visible; 
-            }
-            
-            /* Card Adjustments */
-            .order-header {
-                flex-direction: column;
-            }
-            .header-left {
-                flex-direction: column;
-                width: 100%;
-                gap: 10px;
-            }
-            .order-actions {
-                flex-direction: row;
-                width: 100%;
-                justify-content: space-between;
-                flex-wrap: wrap;
-                margin-top: 15px;
-                border-top: 1px solid #eee;
-                padding-top: 10px;
-            }
+            body { overflow: auto; }
+            .zoom-container { zoom: 1; flex-direction: column; }
+            .sidebar { display: none; }
+            .main { width: 100%; height: 100vh; }
+            .mobile-menu-btn { display: block; position: absolute; right: 15px; top: 15px; z-index: 101; }
+            .top-bar { flex-direction: column; gap: 10px; padding: 10px 10px 20px; align-items: stretch; position: relative; }
+            #searchId { width: 100% !important; box-sizing: border-box; margin-bottom: 10px; }
+            .filter-options { flexDirection: column; gap: 10px; width: 100%; display: none; }
+            .filter-options.show { display: flex; }
+            .input-group { width: 100%; flex-direction: column; gap: 5px; }
+            .input-group input { width: 100% !important; }
+            .content-area { padding: 10px; padding-bottom: 80px; }
+            .order-header { flex-direction: column; }
+            .header-left { flex-direction: column; width: 100%; gap: 10px; }
+            .order-actions { flex-direction: row; width: 100%; justify-content: space-between; flex-wrap: wrap; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
             .price-tag { font-size: 18px; }
-            
-            /* Modal Adjustments */
-            .modal-box {
-                width: 90%;
-                max-height: 85vh;
-                padding: 15px;
-            }
-            
-            .product-grid {
-                grid-template-columns: repeat(3, 1fr); /* 3 items per row on mobile */
-            }
-            
-            /* Bigger touch targets */
-            .btn, .btn-secondary, .btn-outline {
-                padding: 10px 15px;
-                font-size: 14px;
-            }
+            .modal-box { width: 95%; max-height: 85vh; padding: 15px; }
+            .product-grid { grid-template-columns: repeat(3, 1fr); }
+            .btn, .btn-secondary, .btn-outline { padding: 10px 15px; font-size: 14px; }
+            .preview-content img { max-height: 80vh; }
         }
     </style>
 </head>
@@ -325,35 +158,36 @@
         </div>
 
         <div class="main">
+            <div class="loading-bar-container">
+                <div class="loading-bar" id="loadingBar"></div>
+            </div>
+
             <div class="top-bar" id="filterBar">
+                <button class="mobile-menu-btn" id="mobileMenuBtn">⋯</button>
                 <input type="text" id="searchId" placeholder="Order ID / Name / Phone" style="width: 200px;" oninput="debounceSearch()">
-                <select id="statusFilter">
-                    <option value="any" selected>Any Status</option>
-                    <option value="pending">Payment Pending</option>
-                    <option value="paid">Paid</option>
-                    <option value="voided">Voided</option>
-                    <option value="authorized">Authorized</option>
-                    <option value="partially_paid">Partially Paid</option>
-                    <option value="refunded">Refunded</option>
-                </select>
-                <div class="input-group">
-                    <input type="date" id="dateFrom">
-                    <span>to</span>
-                    <input type="date" id="dateTo">
+                <div class="filter-options" id="filterOptions">
+                    <select id="statusFilter">
+                        <option value="any" selected>Any Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="paid">Paid</option>
+                        <option value="void">Void</option>
+                        <option value="product_entry">Product Entry</option>
+                        <option value="courier">Courier</option>
+                    </select>
+                    <div class="input-group">
+                        <input type="date" id="dateFrom">
+                        <span>to</span>
+                        <input type="date" id="dateTo">
+                    </div>
+                    <button class="btn" onclick="applyFilters()">Filter</button>
+                    <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+                    <div id="entryAmountDisplay" class="entry-amount-display">Entry Amount: 0</div>
+                    <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
                 </div>
-                <button class="btn" onclick="applyFilters()">Filter</button>
-                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
-                
-                <div id="entryAmountDisplay" class="entry-amount-display">Entry Amount: 0</div>
-                
-                <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
             </div>
 
             <div class="content-area">
-                <div id="loader" style="text-align:center; margin-top:50px; display:none;">Loading...</div>
-                
                 <div id="ordersContainer"></div>
-
                 <div id="paginationControls" style="display:none; justify-content:center; gap:10px; margin-top:20px; padding-bottom: 20px;">
                     <button class="btn btn-secondary" id="btnPrev" onclick="changePage(-1)" disabled>Previous</button>
                     <button class="btn btn-secondary" id="btnNext" onclick="changePage(1)" disabled>Next</button>
@@ -398,21 +232,10 @@
              <span class="modal-close" onclick="closeModal('editCustomerModal')">&times;</span>
              <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Edit Customer Info</h3>
              <input type="hidden" id="ec_orderId">
-             <div class="form-group">
-                 <label>Name</label>
-                 <input type="text" id="ec_name">
-             </div>
-             <div class="form-group">
-                 <label>Phone</label>
-                 <input type="text" id="ec_phone">
-             </div>
-             <div class="form-group">
-                 <label>Address</label>
-                 <textarea id="ec_address" rows="3"></textarea>
-             </div>
-             <div style="text-align:right; margin-top:15px;">
-                 <button class="btn" onclick="saveOrderCustomerDetails()">Save Changes</button>
-             </div>
+             <div class="form-group"><label>Name</label><input type="text" id="ec_name"></div>
+             <div class="form-group"><label>Phone</label><input type="text" id="ec_phone"></div>
+             <div class="form-group"><label>Address</label><textarea id="ec_address" rows="3"></textarea></div>
+             <div style="text-align:right; margin-top:15px;"><button class="btn" onclick="saveOrderCustomerDetails()">Save Changes</button></div>
         </div>
     </div>
 
@@ -421,9 +244,7 @@
             <span class="modal-close" onclick="closeModal('editOrderModal')">&times;</span>
             <div style="font-size:18px; font-weight:700; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">Edit Order Products</div>
             <input type="hidden" id="editOrderId">
-            
             <div id="editOrderList" style="max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
-            
             <div style="border-top: 1px solid #eee; padding-top: 10px; margin-bottom: 15px;">
                 <label style="font-size:12px; font-weight:600; display:block; margin-bottom:5px;">Add Product</label>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
@@ -432,15 +253,12 @@
                 </div>
                 <div id="productSearchResults" style="max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #eee; display:none;"></div>
             </div>
-
             <div style="background: #f9f9f9; padding: 10px; border-radius: 5px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                     <label style="font-size:12px; font-weight:600;">Final Amount</label>
                     <input type="number" id="editFinalAmount" style="width: 120px; text-align:right; font-weight:bold;">
                 </div>
-                <div style="font-size:11px; color:#666; text-align:right;">(Updates Sheet & Invoice Amount)</div>
             </div>
-
             <div style="text-align: right; margin-top: 15px;">
                 <button class="btn btn-secondary" onclick="closeModal('editOrderModal')">Cancel</button>
                 <button class="btn" onclick="saveOrderEdits()">Save Changes (Sync Shopify)</button>
@@ -520,11 +338,17 @@
         </div>
     </div>
 
-    <div id="imgPreview" class="img-preview" onclick="if(event.target === this) this.style.display='none'">
-        <div class="preview-controls"><span class="close-preview" onclick="document.getElementById('imgPreview').style.display='none'">&times;</span></div>
+    <div id="imgPreview" class="img-preview" onclick="if(event.target === this) closeModal('imgPreview')">
+        <span class="close-preview" onclick="closeModal('imgPreview')">&times;</span>
         <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1); event.stopPropagation();">&#10094;</span>
-        <img id="previewImgSrc" src="">
+        <div class="preview-content" onclick="closeModal('imgPreview')">
+            <img id="previewImgSrc" src="" onclick="toggleSmartZoom(event); event.stopPropagation();">
+        </div>
         <span class="img-nav next-btn" id="nextBtn" onclick="navigatePreview(1); event.stopPropagation();">&#10095;</span>
+        <div class="img-caption" onclick="event.stopPropagation()">
+            <div class="img-caption-title" id="capTitle"></div>
+            <div id="capDesc"></div>
+        </div>
     </div>
 
     <script>
@@ -538,20 +362,47 @@
         let searchTimeout; 
         let allOrdersCache = []; 
         let currentEditOrderItems = [];
-        let gl_images = {}; // GLOBAL IMAGES MAP
+        let gl_images = {}; 
+        let isZoomed = false;
 
         window.onload = function() {
             applyFilters();
-            
-            // KEYBOARD NAVIGATION SUPPORT ADDED HERE
+            document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+                document.getElementById('filterOptions').classList.toggle('show');
+            });
+            document.addEventListener('click', function(event) {
+                const filterOptions = document.getElementById('filterOptions');
+                const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+                if (window.innerWidth <= 768 && !filterOptions.contains(event.target) && !mobileMenuBtn.contains(event.target) && filterOptions.classList.contains('show')) {
+                    filterOptions.classList.remove('show');
+                }
+            });
             document.addEventListener('keydown', function(e) {
                 if(document.getElementById('imgPreview').style.display === 'flex') {
                     if(e.key === 'ArrowLeft') navigatePreview(-1);
                     if(e.key === 'ArrowRight') navigatePreview(1);
-                    if(e.key === 'Escape') document.getElementById('imgPreview').style.display = 'none';
+                    if(e.key === 'Escape') closeModal('imgPreview');
                 }
             });
+            const pImg = document.getElementById('previewImgSrc');
+            pImg.addEventListener('mousemove', panImage);
+            pImg.addEventListener('touchmove', panImage, {passive: false});
         };
+        
+        function showLoading() {
+            const bar = document.getElementById('loadingBar');
+            bar.classList.add('active');
+            bar.style.width = '30%'; 
+            document.getElementById('paginationControls').style.display = 'none';
+        }
+        function hideLoading() {
+            const bar = document.getElementById('loadingBar');
+            bar.style.width = '100%';
+            setTimeout(() => {
+                bar.classList.remove('active');
+                bar.style.width = '0';
+            }, 300);
+        }
 
         function debounceSearch() {
             clearTimeout(searchTimeout);
@@ -559,26 +410,22 @@
         }
 
         async function applyFilters(cursor = "") {
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('paginationControls').style.display = 'none';
-            
+            showLoading();
             let status = document.getElementById('statusFilter').value;
             let sid = document.getElementById('searchId').value;
             let dFrom = document.getElementById('dateFrom').value;
             let dTo = document.getElementById('dateTo').value;
 
             let url = SCRIPT_URL + `?action=getOrders&status=${encodeURIComponent(status)}`;
-            if(sid) url += `&name=${encodeURIComponent(sid)}`;
-            if(dFrom) url += `&created_at_min=${dFrom}`;
-            if(dTo) url += `&created_at_max=${dTo}`;
             if(sid) url += `&search=${encodeURIComponent(sid)}`;
-            if(dFrom) url += `&dateFrom=${dFrom}&dateTo=${dTo}`;
+            if(dFrom) url += `&dateFrom=${dFrom}`;
+            if(dTo) url += `&dateTo=${dTo}`;
             if(cursor) url += `&page_info=${encodeURIComponent(cursor)}`;
 
             try {
                 let res = await fetch(url);
                 let data = await res.json();
-                document.getElementById('loader').style.display = 'none';
+                hideLoading();
 
                 if(data.entryAmount !== undefined) {
                      document.getElementById('entryAmountDisplay').innerText = "Entry Amount: " + data.entryAmount.toLocaleString();
@@ -596,7 +443,7 @@
                 document.getElementById('paginationControls').style.display = 'flex';
 
             } catch(e) { 
-                document.getElementById('loader').style.display = 'none';
+                hideLoading();
                 showToast("Error loading data");
             }
         }
@@ -612,7 +459,7 @@
         function renderNewOrders(orders, images, savedDetails) {
             let container = document.getElementById('ordersContainer');
             container.innerHTML = '';
-            gl_images = images; // SAVE GLOBAL IMAGES
+            gl_images = images; 
             
             if(!orders || orders.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;">No orders found.</div>'; return; }
 
@@ -620,46 +467,52 @@
                 let id = String(order.order_number);
                 let saved = savedDetails[id]; 
                 let isListed = !!saved;
-
                 let statusBadge = '';
+                let isOrderVoid = false;
+
                 if (isListed) {
                     let s = saved.status || "Pending";
-                    let sClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : (s.toLowerCase().includes('void') ? 'status-void' : 'status-pending');
+                    let sClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
+                                 s.toLowerCase().includes('courier') ? 'status-courier' :
+                                 s.toLowerCase().includes('void') ? 'status-void' : 'status-pending';
                     statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}')">${s}</span>`;
+                    if(s.toLowerCase().includes('void')) isOrderVoid = true;
                 } else {
                     let s = order.financial_status;
                     let sClass = s === 'paid' ? 'status-paid' : (s === 'voided' ? 'status-voided' : 'status-pending');
                     statusBadge = `<span class="status-badge ${sClass}">${s}</span>`;
+                    if(s === 'voided') isOrderVoid = true;
                 }
 
                 let addBtn = isListed ? '' : `<button class="btn btn-sm" onclick="openAddModal('${id}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
 
                 let productInfoList = [];
-                // Collection of ALL images for this order (for gallery support)
-                let orderAllImages = [];
+                let orderGallery = [];
                 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
+                         if(isOrderVoid) isRemoved = true; 
                          if(!isRemoved && item.vendor) {
                              let v = item.vendor;
-                             if(item.variant_title && item.variant_title !== 'Default Title') {
-                                 v += "," + item.variant_title;
-                             }
+                             if(item.variant_title && item.variant_title !== 'Default Title') v += "," + item.variant_title;
                              productInfoList.push(v);
                          }
-                         // Collect images for gallery
                          if(item.product_id && images[item.product_id]) {
-                             // Only add if not already in list to avoid duplicates (optional, but good)
-                             if(!orderAllImages.includes(images[item.product_id])) {
-                                 orderAllImages.push(images[item.product_id]);
+                             let existing = orderGallery.find(g => g.src === images[item.product_id]);
+                             if(!existing) {
+                                 orderGallery.push({
+                                     src: images[item.product_id],
+                                     title: item.title,
+                                     variant: item.variant_title || '',
+                                     price: item.price
+                                 });
                              }
                          }
                     });
                 }
                 
-                // Prepare JSON for onclick function (Escape quotes)
-                let orderImagesJson = JSON.stringify(orderAllImages).replace(/"/g, "&quot;");
+                let galleryJson = JSON.stringify(orderGallery).replace(/"/g, "&quot;");
                 let copyProductString = productInfoList.join('/');
                 let productHtml = '';
 
@@ -667,17 +520,12 @@
                     order.line_items.forEach(item => {
                          let img = images[item.product_id] || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
-                         
-                         // Determine index of this image in the order's full gallery
+                         if(isOrderVoid) isRemoved = true; 
+
                          let imgIndex = -1;
-                         if(images[item.product_id]) {
-                             imgIndex = orderAllImages.indexOf(images[item.product_id]);
-                         }
+                         orderGallery.forEach((g, idx) => { if(g.src === img) imgIndex = idx; });
                          
-                         // If image exists, pass the FULL order gallery + current index
-                         let clickEvent = (imgIndex > -1) 
-                            ? `onclick="showPreview(${orderImagesJson}, ${imgIndex}); event.stopPropagation();"` 
-                            : '';
+                         let clickEvent = (imgIndex > -1) ? `onclick="showPreview(${galleryJson}, ${imgIndex}); event.stopPropagation();"` : '';
                          
                          productHtml += `
                          <div class="p-item ${isRemoved?'removed':''}">
@@ -686,13 +534,15 @@
                             <div style="font-weight:600;margin-top:3px;">${item.quantity}x</div>
                             <div class="variant-text">${item.variant_title || ''}</div>
                             <div class="vendor-text">${item.vendor}</div>
+                            <div class="price-text">${item.price}</div>
                          </div>`;
                     });
                 }
                 
                 let dlBtn = '';
-                if(orderAllImages.length > 0) {
-                    let dlArg = JSON.stringify(orderAllImages).replace(/"/g, "&quot;");
+                if(orderGallery.length > 0) {
+                    let urlsOnly = orderGallery.map(g => g.src);
+                    let dlArg = JSON.stringify(urlsOnly).replace(/"/g, "&quot;");
                     dlBtn = `<button class="btn-outline" onclick="downloadImages(${dlArg})">Download Images</button>`;
                 }
                 
@@ -705,13 +555,7 @@
                 let custHtml = '';
                 if (isListed) {
                     let fullCopyPayload = `#${id} ${saved.name}\n\n${copyProductString}`;
-                    let safeCopyPayload = fullCopyPayload
-                        .replace(/\\/g, '\\\\')
-                        .replace(/'/g, "\\'")
-                        .replace(/"/g, '&quot;')
-                        .replace(/\n/g, '\\n');
-
-                    // NEW: Edit Icon added next to Name
+                    let safeCopyPayload = fullCopyPayload.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
                     custHtml = `
                     <div class="customer-details-box">
                         <div class="cust-name-row">
@@ -726,10 +570,7 @@
                 }
 
                 let extraActions = '';
-                
-                // UPDATED: Show invoice if saved.invoice exists (regardless of status) OR status includes Product Entry
                 let showInvoice = (isListed && (saved.invoice || (saved.status && saved.status.toLowerCase().includes('product entry'))));
-                
                 if (showInvoice) {
                      if (saved.invoice) {
                          extraActions += `
@@ -739,15 +580,13 @@
                              <span class="edit-icon" onclick="openInvoiceModal('${id}', '${saved.invoice}', true)">✎</span>
                          </div>`;
                      }
-                     
-                     // UPDATED: Hide fulfill button if status is Courier
                      let isFulfilled = saved.status && saved.status.toLowerCase().includes('courier');
                      if (!isFulfilled) {
                          extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
                      }
                 }
                 
-                let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount})">Edit</span>` : '';
+                let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
                 let dateStr = new Date(order.created_at).toLocaleDateString('en-GB');
                 let displayAmount = isListed ? saved.amount : (order.current_total_price || order.total_price);
 
@@ -776,86 +615,36 @@
             });
         }
 
-        // --- NEW: Edit Customer Logic ---
-        function openEditCustomerModal(id, name, phone, address) {
-            document.getElementById('ec_orderId').value = id;
-            document.getElementById('ec_name').value = name;
-            document.getElementById('ec_phone').value = phone;
-            document.getElementById('ec_address').value = address;
-            document.getElementById('editCustomerModal').style.display = 'flex';
-        }
-
-        async function saveOrderCustomerDetails() {
-            let id = document.getElementById('ec_orderId').value;
-            let name = document.getElementById('ec_name').value;
-            let phone = document.getElementById('ec_phone').value;
-            let address = document.getElementById('ec_address').value;
-            
-            let btn = document.querySelector('#editCustomerModal button');
-            let origText = btn.innerText;
-            btn.innerText = "Saving...";
-            
-            try {
-                let url = `${SCRIPT_URL}?action=updateOrderCustomer&oID=${id}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
-                let res = await fetch(url);
-                let data = await res.json();
-                
-                if(data.status === 'success') {
-                    showToast("Customer info updated");
-                    closeModal('editCustomerModal');
-                    applyFilters(); // Refresh UI
-                } else {
-                    showToast("Error updating info");
-                }
-            } catch(e) {
-                showToast("Connection Error");
-            } finally {
-                btn.innerText = origText;
-            }
-        }
-
-        // --- EDIT ORDER LOGIC ---
-        function openEditModal(orderId, currentAmount) {
+        function openEditModal(orderId, currentAmount, isOrderVoid) {
             let order = allOrdersCache.find(o => String(o.order_number) === String(orderId));
             if(!order) { showToast("Order details not found in cache"); return; }
-            
             document.getElementById('editOrderId').value = orderId;
             document.getElementById('editFinalAmount').value = currentAmount;
-            
             let container = document.getElementById('editOrderList');
             container.innerHTML = '';
             document.getElementById('productSearchResults').innerHTML = '';
             document.getElementById('productSearchResults').style.display = 'none';
             document.getElementById('productSearchInput').value = '';
-
             currentEditOrderItems = []; 
-
             if(order.line_items) {
                 order.line_items.forEach((item, idx) => {
-                    // STORE ORIGINAL
-                    currentEditOrderItems.push({
-                        ...item,
-                        removed: false,
-                        restock: false,
-                        isNew: false
-                    });
-
-                    // USE GLOBAL IMAGE
+                    let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
+                    if(isOrderVoid) isRemoved = true; 
+                    currentEditOrderItems.push({ ...item, removed: isRemoved, restock: false, isNew: false });
                     let imgUrl = (gl_images && gl_images[item.product_id]) ? gl_images[item.product_id] : 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
-                    
-                    renderEditRow(idx, item.name, item.variant_title, item.quantity, item.price, imgUrl);
+                    renderEditRow(idx, item.name, item.variant_title, item.quantity, item.price, imgUrl, isRemoved);
                 });
             }
             document.getElementById('editOrderModal').style.display = 'flex';
         }
 
-        function renderEditRow(idx, name, variant, qty, price, img) {
+        function renderEditRow(idx, name, variant, qty, price, img, isRemoved = false) {
             let container = document.getElementById('editOrderList');
             let div = document.createElement('div');
             div.className = 'edit-item-row';
             div.id = `edit-row-${idx}`;
             div.innerHTML = `
-                <img src="${img}">
+                <img src="${img}" onclick="showPreview(['${img}'], 0); event.stopPropagation();">
                 <div class="edit-item-info">
                     <div style="font-weight:600;">${name}</div>
                     <div style="color:#666;">${variant || '-'}</div>
@@ -863,12 +652,13 @@
                 </div>
                 <div class="edit-item-price">${price}</div>
                 <div class="edit-item-actions">
-                    <label class="restock-label" id="lbl-restock-${idx}" style="display:none;">
+                    <label class="restock-label" id="lbl-restock-${idx}" style="${isRemoved ? 'display:flex;' : 'display:none;'}">
                         <input type="checkbox" onchange="toggleRestock(${idx}, this.checked)"> Restock
                     </label>
-                    <button class="btn btn-sm btn-danger" onclick="toggleRemoveItem(${idx})" id="btn-rm-${idx}">Remove</button>
+                    <button class="btn btn-sm ${isRemoved ? 'btn-secondary' : 'btn-danger'}" onclick="toggleRemoveItem(${idx})" id="btn-rm-${idx}">${isRemoved ? 'Undo' : 'Remove'}</button>
                 </div>
             `;
+            if(isRemoved) div.classList.add('removed-text');
             container.appendChild(div);
         }
 
@@ -880,65 +670,40 @@
             let amtInput = document.getElementById('editFinalAmount');
             let currentTotal = parseFloat(amtInput.value) || 0;
             let itemTotal = parseFloat(item.price) * item.quantity;
-
             if(!item.removed) {
-                // Remove
-                item.removed = true;
-                row.classList.add('removed-text'); 
-                btn.innerText = "Undo";
-                btn.className = "btn btn-sm btn-secondary";
-                
-                // Only show restock option if NOT a newly added item
-                if(!item.isNew) {
-                    restockLbl.style.display = "flex"; 
-                } else {
-                    // For new items, we actually just remove them entirely from display
-                    row.remove();
-                    // update array logic is tricky here if we delete index, so we keep marked removed
-                }
-                
+                item.removed = true; row.classList.add('removed-text'); 
+                btn.innerText = "Undo"; btn.className = "btn btn-sm btn-secondary";
+                if(!item.isNew) restockLbl.style.display = "flex"; 
+                else row.remove();
                 amtInput.value = (currentTotal - itemTotal).toFixed(2);
             } else {
-                // Undo
-                item.removed = false;
-                item.restock = false; 
+                item.removed = false; item.restock = false; 
                 row.classList.remove('removed-text');
-                btn.innerText = "Remove";
-                btn.className = "btn btn-sm btn-danger";
+                btn.innerText = "Remove"; btn.className = "btn btn-sm btn-danger";
                 if(!item.isNew) restockLbl.style.display = "none";
-                let chk = document.querySelector(`#lbl-restock-${idx} input`);
-                if(chk) chk.checked = false;
-                
+                let chk = document.querySelector(`#lbl-restock-${idx} input`); if(chk) chk.checked = false;
                 amtInput.value = (currentTotal + itemTotal).toFixed(2);
             }
         }
+        function toggleRestock(idx, checked) { currentEditOrderItems[idx].restock = checked; }
 
-        function toggleRestock(idx, checked) {
-            currentEditOrderItems[idx].restock = checked;
-        }
-
-        // --- NEW: SEARCH & ADD PRODUCT ---
         async function searchProducts() {
             let q = document.getElementById('productSearchInput').value;
             if(q.length < 3) { showToast("Enter at least 3 chars"); return; }
-            
-            let btn = document.querySelector('#editOrderModal .btn-secondary'); // Reusing a button selector just for visual
             let resDiv = document.getElementById('productSearchResults');
             resDiv.style.display = 'block';
             resDiv.innerHTML = '<div style="padding:10px;">Searching...</div>';
-            
             try {
                 let res = await fetch(`${SCRIPT_URL}?action=searchProducts&q=${encodeURIComponent(q)}`);
                 let data = await res.json();
-                
                 resDiv.innerHTML = '';
                 if(data.results && data.results.length > 0) {
                     data.results.forEach(p => {
                         let row = document.createElement('div');
                         row.className = 'search-result-item';
-                        // Added onclick to image for preview
+                        let imgUrl = p.image || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                         row.innerHTML = `
-                            <img src="${p.image || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png'}" style="cursor:pointer;" onclick="showPreview(['${p.image || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png'}'], 0); event.stopPropagation();">
+                            <img src="${imgUrl}" onclick="showPreview(['${imgUrl}'], 0); event.stopPropagation();">
                             <div class="search-result-info">
                                 <div style="font-weight:600;">${p.title}</div>
                                 <div>${p.variant_title} - ${p.price}</div>
@@ -948,36 +713,20 @@
                         `;
                         resDiv.appendChild(row);
                     });
-                } else {
-                    resDiv.innerHTML = '<div style="padding:10px;">No results</div>';
-                }
+                } else { resDiv.innerHTML = '<div style="padding:10px;">No results</div>'; }
             } catch(e) { resDiv.innerHTML = '<div style="padding:10px;">Error</div>'; }
         }
 
         function addProductToOrder(varId, prodId, title, varTitle, price, img) {
             let idx = currentEditOrderItems.length;
-            
-            // Add to tracker
             currentEditOrderItems.push({
-                variant_id: varId,
-                product_id: prodId,
-                name: title,
-                variant_title: varTitle,
-                price: price,
-                quantity: 1,
-                removed: false,
-                restock: false,
-                isNew: true
+                variant_id: varId, product_id: prodId, name: title, variant_title: varTitle,
+                price: price, quantity: 1, removed: false, restock: false, isNew: true
             });
-            
             renderEditRow(idx, title, varTitle, 1, price, img || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png');
-            
-            // Update Amount
             let amtInput = document.getElementById('editFinalAmount');
             let currentTotal = parseFloat(amtInput.value) || 0;
             amtInput.value = (currentTotal + parseFloat(price)).toFixed(2);
-            
-            // Hide search
             document.getElementById('productSearchResults').style.display = 'none';
             document.getElementById('productSearchInput').value = '';
         }
@@ -986,488 +735,243 @@
             let orderId = document.getElementById('editOrderId').value;
             let finalAmount = document.getElementById('editFinalAmount').value;
             let btn = document.querySelector('#editOrderModal .btn:last-child');
-            
-            btn.innerText = "Syncing Shopify...";
-            
-            // 1. Prepare Shopify Payload
-            let additions = [];
-            let removals = [];
-            
-            currentEditOrderItems.forEach(item => {
-                if(item.isNew && !item.removed) {
-                    additions.push({ variantId: item.variant_id, qty: item.quantity });
-                }
-                else if(!item.isNew && item.removed) {
-                    // Send line_item_id to remove? 
-                    // Backend logic uses variant matching to find line item in calc order
-                    removals.push({ variantId: item.variant_id, quantity: 0 }); // We send variantId to match reliably
-                }
-            });
-            
-            // 2. Call Shopify Edit (Backend)
-            if(additions.length > 0 || removals.length > 0) {
-                 await fetch(`${SCRIPT_URL}?action=editShopifyOrder&orderId=${orderId}&additions=${JSON.stringify(additions)}&removals=${JSON.stringify(removals)}`);
-            }
-            
-            // 3. Update Sheet Amount
-            await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${orderId}&type=amount&value=${finalAmount}`);
-            
-            // 4. Process Restocks (Manual Inventory Adjust) for removed items
-            for(let item of currentEditOrderItems) {
-                if(!item.isNew && item.removed && item.restock) {
-                    await fetch(`${SCRIPT_URL}?action=restockItem&variantId=${item.variant_id}&qty=1`);
-                }
-            }
-            
-            btn.innerText = "Save Changes";
-            showToast("Order Updated & Synced");
-            closeModal('editOrderModal');
-            applyFilters();
-        }
-
-        // --- EXISTING MODAL LOGIC ---
-        function openAddModal(id, date, amount) {
-            document.getElementById('m_orderId').value = id;
-            document.getElementById('m_orderDate').value = date;
-            document.getElementById('m_amount').value = amount;
-            let cInput = document.getElementById('cNumber');
-            cInput.value = '';
-            cInput.style.borderColor = '#babfc3'; 
-            document.getElementById('numWarning').innerText = "";
-            document.getElementById('customerDetails').style.display = 'none';
-            document.getElementById('addModal').style.display = 'flex';
-        }
-        
-        function handleCustomerNumberInput(input) {
-            let val = input.value;
-            val = val.replace(/[^0-9]/g, '');
-            if (val.startsWith('880')) val = val.substring(3);
-            if (val.length > 0 && !val.startsWith('0')) val = '0' + val;
-            input.value = val;
-            let warn = document.getElementById('numWarning');
-            if (val.length === 11) {
-                input.style.borderColor = 'green';
-                input.style.borderWidth = '2px';
-                warn.innerText = "";
-            } else {
-                input.style.borderColor = 'red';
-                input.style.borderWidth = '2px';
-                if(val.length > 11) warn.innerText = "Too many digits";
-                else warn.innerText = "Must be 11 digits";
-            }
-        }
-
-        async function checkCustomer() {
-             let num = document.getElementById('cNumber').value;
-             if(num.length !== 11) { alert("Please enter a valid 11-digit number."); return; }
-             
-             let btn = document.getElementById('btnCheck');
-             let originalText = btn.innerText;
-             btn.innerText = "Checking...";
-             
-             try {
-                 let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`);
-                 let data = await res.json();
-                 document.getElementById('customerDetails').style.display = 'block';
-                 document.getElementById('numWarning').innerText = "";
-                 if(data.found) {
-                     document.getElementById('cName').value = data.name;
-                     document.getElementById('cAddress').value = data.address;
-                     isNewCustomer = false;
-                     document.getElementById('cName').readOnly = true;
-                     document.getElementById('cAddress').readOnly = true;
-                     document.getElementById('btnTriggerUpdate').style.display = 'block';
-                     document.getElementById('btnUpdateData').style.display = 'none';
-                 } else {
-                     document.getElementById('cName').value = '';
-                     document.getElementById('cAddress').value = '';
-                     isNewCustomer = true;
-                     document.getElementById('cName').readOnly = false;
-                     document.getElementById('cAddress').readOnly = false;
-                     document.getElementById('btnTriggerUpdate').style.display = 'none';
-                     document.getElementById('btnUpdateData').style.display = 'none';
-                 }
-             } finally {
-                 btn.innerText = originalText;
-             }
-        }
-        
-        function enableUpdateMode() {
-            document.getElementById('cName').readOnly = false;
-            document.getElementById('cAddress').readOnly = false;
-            document.getElementById('btnTriggerUpdate').style.display = 'none';
-            document.getElementById('btnUpdateData').style.display = 'inline-block';
-            document.getElementById('btnSave').style.display = 'none';
-        }
-
-        async function performCustomerUpdate() {
-             let btn = document.getElementById('btnUpdateData');
-             let originalText = btn.innerText;
-             btn.innerText = "Updating...";
-
-             try {
-                 let num = document.getElementById('cNumber').value;
-                 let name = document.getElementById('cName').value;
-                 let addr = document.getElementById('cAddress').value;
-                 let url = `${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`;
-                 await fetch(url);
-                 showToast("Customer Data Updated");
-                 document.getElementById('btnUpdateData').style.display = 'none';
-                 document.getElementById('btnSave').style.display = 'inline-block';
-                 document.getElementById('cName').readOnly = true;
-                 document.getElementById('cAddress').readOnly = true;
-             } catch(e) {
-                 showToast("Update Failed");
-             } finally {
-                 btn.innerText = originalText;
-             }
-        }
-
-        async function saveToSheet() {
-             let num = document.getElementById('cNumber').value;
-             if(num.length !== 11) { alert("Invalid Number"); return; }
-             
-             let btn = document.getElementById('btnSave');
-             let originalText = btn.innerText;
-             btn.innerText = "Saving...";
-             
-             try {
-                 let p = {
-                     action: 'saveOrder',
-                     oID: document.getElementById('m_orderId').value,
-                     oDate: document.getElementById('m_orderDate').value,
-                     oAmount: document.getElementById('m_amount').value,
-                     cNumber: num,
-                     cName: document.getElementById('cName').value,
-                     cAddress: document.getElementById('cAddress').value,
-                     isNewCustomer: isNewCustomer
-                 };
-                 let qs = new URLSearchParams(p).toString();
-                 await fetch(SCRIPT_URL + '?' + qs);
-                 showToast("Saved to List");
-                 closeModal('addModal');
-                 applyFilters();
-             } finally {
-                 btn.innerText = originalText;
-             }
-        }
-
-        function openStatusModal(id, cur) {
-            document.getElementById('statusOrderId').value = id;
-            document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
-            document.getElementById('chkProductEntry').checked = false;
-            document.getElementById('chkVoid').checked = false;
-            if(cur) {
-                let parts = cur.split(', ');
-                document.querySelectorAll('.st-chk').forEach(c => {
-                    if(parts.includes(c.value)) c.checked = true;
-                });
-            }
-            document.getElementById('statusModal').style.display = 'flex';
-        }
-
-        async function saveStatusUpdate() {
-            let id = document.getElementById('statusOrderId').value;
-            let statuses = [];
-            let updateBtn = document.getElementById('btnUpdateStatus');
-            let originalText = updateBtn.innerText;
-            
-            updateBtn.innerText = "Processing...";
-            
-            document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
-            
+            btn.innerText = "Syncing Shopify..."; btn.disabled = true;
             try {
-                // UPDATE: Check functionality for Mark Paid
-                if(statuses.includes('Paid')) { 
-                    let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`);
-                    let data = await res.json();
-                    
-                    if(data.status === 'error') {
-                        showToast("Shopify Error: " + data.message);
-                        updateBtn.innerText = originalText;
-                        return; // Do not update sheet if shopify failed
+                let additions = []; let removals = [];
+                currentEditOrderItems.forEach(item => {
+                    if(item.isNew && !item.removed) { additions.push({ variantId: item.variant_id, qty: item.quantity }); }
+                    else if(!item.isNew && item.removed) { removals.push({ variantId: item.variant_id, quantity: 0 }); }
+                });
+                if(additions.length > 0 || removals.length > 0) {
+                     let res = await fetch(`${SCRIPT_URL}?action=editShopifyOrder&orderId=${orderId}&additions=${JSON.stringify(additions)}&removals=${JSON.stringify(removals)}`);
+                     let data = await res.json();
+                     if(data.status === 'error') { showToast("Shopify Error: " + data.message); btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; return; }
+                }
+                await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${orderId}&type=amount&value=${finalAmount}`);
+                for(let item of currentEditOrderItems) {
+                    if(!item.isNew && item.removed && item.restock) {
+                        await fetch(`${SCRIPT_URL}?action=restockItem&variantId=${item.variant_id}&qty=${item.quantity}`);
                     }
                 }
-
-                if(document.getElementById('chkVoid').checked) {
-                    closeModal('statusModal');
-                    isVoiding = true;
-                    openNoteModal(id, '', false); 
-                    return;
-                }
-                if(document.getElementById('chkProductEntry').checked) {
-                    closeModal('statusModal');
-                    pendingStatusUpdate = { id: id, statuses: statuses };
-                    openInvoiceModal(id, '');
-                    return;
-                }
-                if(statuses.length > 0) {
-                    await updateSheet(id, 'status', statuses.join(', '));
-                    closeModal('statusModal');
-                }
-            } catch(e) {
-                showToast("Connection Error");
-            } finally {
-                updateBtn.innerText = originalText;
-            }
+                showToast("Order Updated & Synced"); closeModal('editOrderModal'); applyFilters();
+            } catch(e) { showToast("Connection Error: " + e.message); } 
+            finally { btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; }
         }
 
+        function showPreview(images, idx) {
+             currentPreviewImages = images; currentPreviewIndex = idx;
+             updatePreviewContent(); document.getElementById('imgPreview').style.display = 'flex';
+        }
+        function updatePreviewContent() {
+             const img = document.getElementById('previewImgSrc');
+             const data = currentPreviewImages[currentPreviewIndex];
+             const src = data.src ? data.src : data; 
+             img.src = src; img.classList.remove('zoomed');
+             img.style.transformOrigin = "center center"; img.style.transform = "scale(1)"; isZoomed = false;
+             if (data.title) { document.getElementById('capTitle').innerText = data.title; document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; } 
+             else { document.getElementById('capTitle').innerText = ""; document.getElementById('capDesc').innerText = ""; }
+        }
+        function navigatePreview(dir) {
+             let newIndex = currentPreviewIndex + dir;
+             if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; updatePreviewContent(); }
+        }
+        function toggleSmartZoom(e) {
+            e.stopPropagation(); const img = e.target; isZoomed = !isZoomed;
+            if (isZoomed) {
+                img.classList.add('zoomed'); const rect = img.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100;
+                img.style.transformOrigin = `${x}% ${y}%`; img.style.transform = "scale(2.5)";
+            } else { img.classList.remove('zoomed'); img.style.transform = "scale(1)"; img.style.transformOrigin = "center center"; }
+        }
+        function panImage(e) {
+            if (!isZoomed) return; e.preventDefault(); const img = document.getElementById('previewImgSrc'); const rect = img.getBoundingClientRect();
+            let clientX, clientY; if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } else { clientX = e.clientX; clientY = e.clientY; }
+            const x = ((clientX - rect.left) / rect.width) * 100; const y = ((clientY - rect.top) / rect.height) * 100; img.style.transformOrigin = `${x}% ${y}%`;
+        }
+
+        function openAddModal(id, date, amount) {
+            document.getElementById('m_orderId').value = id; document.getElementById('m_orderDate').value = date;
+            document.getElementById('m_amount').value = amount; document.getElementById('cNumber').value = '';
+            document.getElementById('customerDetails').style.display = 'none'; document.getElementById('addModal').style.display = 'flex';
+        }
+        function handleCustomerNumberInput(input) {
+            let val = input.value.replace(/[^0-9]/g, ''); if (val.startsWith('880')) val = val.substring(3);
+            if (val.length > 0 && !val.startsWith('0')) val = '0' + val; input.value = val;
+            let warn = document.getElementById('numWarning');
+            if (val.length === 11) { input.style.borderColor = 'green'; warn.innerText = ""; } else { input.style.borderColor = 'red'; warn.innerText = "Must be 11 digits"; }
+        }
+        async function checkCustomer() {
+             let num = document.getElementById('cNumber').value; if(num.length !== 11) { alert("Please enter a valid 11-digit number."); return; }
+             let btn = document.getElementById('btnCheck'); let originalText = btn.innerText; btn.innerText = "Checking...";
+             try {
+                 let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`); let data = await res.json();
+                 document.getElementById('customerDetails').style.display = 'block';
+                 if(data.found) {
+                     document.getElementById('cName').value = data.name; document.getElementById('cAddress').value = data.address;
+                     isNewCustomer = false; document.getElementById('cName').readOnly = true; document.getElementById('cAddress').readOnly = true;
+                     document.getElementById('btnTriggerUpdate').style.display = 'block'; document.getElementById('btnUpdateData').style.display = 'none';
+                 } else {
+                     document.getElementById('cName').value = ''; document.getElementById('cAddress').value = '';
+                     isNewCustomer = true; document.getElementById('cName').readOnly = false; document.getElementById('cAddress').readOnly = false;
+                     document.getElementById('btnTriggerUpdate').style.display = 'none'; document.getElementById('btnUpdateData').style.display = 'none';
+                 }
+             } finally { btn.innerText = originalText; }
+        }
+        function enableUpdateMode() {
+            document.getElementById('cName').readOnly = false; document.getElementById('cAddress').readOnly = false;
+            document.getElementById('btnTriggerUpdate').style.display = 'none'; document.getElementById('btnUpdateData').style.display = 'inline-block';
+            document.getElementById('btnSave').style.display = 'none';
+        }
+        async function performCustomerUpdate() {
+             let btn = document.getElementById('btnUpdateData'); btn.innerText = "Updating...";
+             try {
+                 let num = document.getElementById('cNumber').value; let name = document.getElementById('cName').value; let addr = document.getElementById('cAddress').value;
+                 await fetch(`${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`);
+                 showToast("Customer Data Updated"); document.getElementById('btnUpdateData').style.display = 'none';
+                 document.getElementById('btnSave').style.display = 'inline-block'; document.getElementById('cName').readOnly = true; document.getElementById('cAddress').readOnly = true;
+             } catch(e) { showToast("Update Failed"); } finally { btn.innerText = "Update Data"; }
+        }
+        async function saveToSheet() {
+             let num = document.getElementById('cNumber').value; if(num.length !== 11) { alert("Invalid Number"); return; }
+             let btn = document.getElementById('btnSave'); btn.innerText = "Saving...";
+             try {
+                 let p = { action: 'saveOrder', oID: document.getElementById('m_orderId').value, oDate: document.getElementById('m_orderDate').value,
+                     oAmount: document.getElementById('m_amount').value, cNumber: num, cName: document.getElementById('cName').value,
+                     cAddress: document.getElementById('cAddress').value, isNewCustomer: isNewCustomer };
+                 await fetch(SCRIPT_URL + '?' + new URLSearchParams(p).toString()); showToast("Saved to List"); closeModal('addModal'); applyFilters();
+             } finally { btn.innerText = "Save to List"; }
+        }
+        function openStatusModal(id, cur) {
+            document.getElementById('statusOrderId').value = id; document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
+            document.getElementById('chkProductEntry').checked = false; document.getElementById('chkVoid').checked = false;
+            if(cur) { let parts = cur.split(', '); document.querySelectorAll('.st-chk').forEach(c => { if(parts.includes(c.value)) c.checked = true; }); }
+            document.getElementById('statusModal').style.display = 'flex';
+        }
+        async function saveStatusUpdate() {
+            let id = document.getElementById('statusOrderId').value; let statuses = [];
+            let updateBtn = document.getElementById('btnUpdateStatus'); updateBtn.innerText = "Processing...";
+            document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
+            try {
+                if(statuses.includes('Paid')) { 
+                    let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); let data = await res.json();
+                    if(data.status === 'error') { showToast(data.message); updateBtn.innerText = "Update"; return; }
+                }
+                if(document.getElementById('chkVoid').checked) { closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', false); return; }
+                if(document.getElementById('chkProductEntry').checked) { closeModal('statusModal'); pendingStatusUpdate = { id: id, statuses: statuses }; openInvoiceModal(id, ''); return; }
+                if(statuses.length > 0) { await updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
+            } catch(e) { showToast("Connection Error"); } finally { updateBtn.innerText = "Update"; }
+        }
         function openNoteModal(id, note, isEdit = true) {
-             document.getElementById('noteOrderId').value = id;
-             document.getElementById('noteInput').value = note;
+             document.getElementById('noteOrderId').value = id; document.getElementById('noteInput').value = note;
              if(isVoiding) {
                  document.getElementById('noteTitle').innerText = "Reason for Voiding #" + id;
                  document.getElementById('btnSaveNote').innerText = "Void & Cancel";
-                 document.getElementById('btnSaveNote').style.background = "#d82c0d";
-                 document.getElementById('btnDeleteNote').style.display = 'none';
+                 document.getElementById('btnSaveNote').style.background = "#d82c0d"; document.getElementById('btnDeleteNote').style.display = 'none';
              } else {
                  document.getElementById('noteTitle').innerText = "Update Note #" + id;
                  document.getElementById('btnSaveNote').innerText = "Save";
-                 document.getElementById('btnSaveNote').style.background = "#0b6e4f";
-                 document.getElementById('btnDeleteNote').style.display = 'block';
+                 document.getElementById('btnSaveNote').style.background = "#0b6e4f"; document.getElementById('btnDeleteNote').style.display = 'block';
              }
              document.getElementById('noteModal').style.display = 'flex';
         }
-
         async function saveNote() {
-            let btn = document.getElementById('btnSaveNote');
-            let originalText = btn.innerText;
-            btn.innerText = "Saving...";
-            
-            let id = document.getElementById('noteOrderId').value;
-            let note = document.getElementById('noteInput').value;
-            
+            let btn = document.getElementById('btnSaveNote'); btn.innerText = "Saving...";
+            let id = document.getElementById('noteOrderId').value; let note = document.getElementById('noteInput').value;
             try {
                 if(isVoiding) {
                     if(!note) { showToast("Reason required"); return; }
                     await fetch(`${SCRIPT_URL}?action=cancelShopifyOrder&orderId=${id}&note=${encodeURIComponent(note)}`);
-                    showToast("Order Cancelled & Voided");
-                    isVoiding = false;
-                } else {
-                    await updateSheet(id, 'note', note);
-                }
-                closeModal('noteModal');
-                applyFilters();
-            } finally {
-                btn.innerText = originalText;
-            }
+                    showToast("Order Cancelled & Voided"); isVoiding = false;
+                } else { await updateSheet(id, 'note', note); }
+                closeModal('noteModal'); applyFilters();
+            } finally { btn.innerText = "Save"; }
         }
-
         async function deleteNote() {
-            let btn = document.getElementById('btnDeleteNote');
-            let originalText = btn.innerText;
-            btn.innerText = "Deleting...";
-            
-            try {
-                let id = document.getElementById('noteOrderId').value;
-                await updateSheet(id, 'note', '');
-                closeModal('noteModal');
-            } finally {
-                btn.innerText = originalText;
-            }
+            let btn = document.getElementById('btnDeleteNote'); btn.innerText = "Deleting...";
+            try { let id = document.getElementById('noteOrderId').value; await updateSheet(id, 'note', ''); closeModal('noteModal'); applyFilters(); } finally { btn.innerText = "Delete"; }
         }
-
         function openInvoiceModal(id, val, isEdit = false) {
-            document.getElementById('invOrderId').value = id;
-            document.getElementById('invoiceInput').value = val || '';
-            isEditingInvoice = isEdit;
+            document.getElementById('invOrderId').value = id; document.getElementById('invoiceInput').value = val || ''; isEditingInvoice = isEdit;
             document.getElementById('invModalTitle').innerText = isEdit ? 'Edit Invoice' : 'Enter Invoice Number';
-            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none';
-            document.getElementById('invoiceModal').style.display = 'flex';
+            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none'; document.getElementById('invoiceModal').style.display = 'flex';
         }
-
-        function deleteInvoice() {
-            openConfirmModal("Delete this invoice?", function() { 
-                updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE'); 
-                closeModal('invoiceModal'); 
-            });
-        }
-
+        function deleteInvoice() { openConfirmModal("Delete this invoice?", function() { updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE'); closeModal('invoiceModal'); }); }
         async function confirmInvoice() {
-             let btn = document.getElementById('btnSaveInvoice');
-             let originalText = btn.innerText;
-             btn.innerText = "Saving...";
-
-             let id = document.getElementById('invOrderId').value;
-             let inv = document.getElementById('invoiceInput').value;
-             
+             let btn = document.getElementById('btnSaveInvoice'); btn.innerText = "Saving...";
+             let id = document.getElementById('invOrderId').value; let inv = document.getElementById('invoiceInput').value;
              try {
                  if(inv.length !== 13) { showToast("13 digits required"); return; }
                  if(pendingStatusUpdate) {
-                     let s = pendingStatusUpdate.statuses.join(', ');
-                     if(s) s += ", ";
-                     s += "Product Entry";
-                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`);
-                     pendingStatusUpdate = null;
-                 } else {
-                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`);
-                 }
-                 closeModal('invoiceModal');
-                 applyFilters();
-             } finally {
-                 btn.innerText = originalText;
-             }
+                     let s = pendingStatusUpdate.statuses.join(', '); if(s) s += ", "; s += "Product Entry";
+                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`); pendingStatusUpdate = null;
+                 } else { await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`); }
+                 closeModal('invoiceModal'); applyFilters();
+             } finally { btn.innerText = "Save"; }
         }
-
-        function openConfirmModal(msg, callback) {
-            document.getElementById('confirmMessage').innerText = msg;
-            pendingConfirmAction = callback;
-            document.getElementById('confirmModal').style.display = 'flex';
-        }
-        document.getElementById('confirmBtnAction').onclick = function() {
-            if(pendingConfirmAction) pendingConfirmAction(); 
-            closeModal('confirmModal');
-        };
-
+        function openConfirmModal(msg, callback) { document.getElementById('confirmMessage').innerText = msg; pendingConfirmAction = callback; document.getElementById('confirmModal').style.display = 'flex'; }
+        document.getElementById('confirmBtnAction').onclick = function() { if(pendingConfirmAction) pendingConfirmAction(); closeModal('confirmModal'); };
         function openFulfillModal(id) {
-             document.getElementById('fOrderId').value = id;
-             // CLEAR INPUTS ON OPEN
-             document.getElementById('trackNum').value = '';
-             document.getElementById('trackLink').value = '';
-             
-             document.getElementById('fulfillModal').style.display = 'flex';
+             document.getElementById('fOrderId').value = id; document.getElementById('trackNum').value = ''; document.getElementById('trackLink').value = ''; document.getElementById('fulfillModal').style.display = 'flex';
         }
-        
         async function submitFulfillment() {
-             let id = document.getElementById('fOrderId').value;
-             let num = document.getElementById('trackNum').value;
-             let link = document.getElementById('trackLink').value;
+             let id = document.getElementById('fOrderId').value; let num = document.getElementById('trackNum').value; let link = document.getElementById('trackLink').value;
              if(!num) { showToast("Tracking Num Required"); return; }
              document.getElementById('btnConfirmFulfill').innerText = "Processing...";
              await fetch(`${SCRIPT_URL}?action=fulfillOrder&orderId=${id}&trackingNum=${num}&trackingUrl=${encodeURIComponent(link)}`);
-             showToast("Fulfilled");
-             document.getElementById('btnConfirmFulfill').innerText = "Confirm";
-             
-             // Clear inputs after submit as well (double safety)
-             document.getElementById('trackNum').value = '';
-             document.getElementById('trackLink').value = '';
-             
-             closeModal('fulfillModal');
-             applyFilters();
+             showToast("Fulfilled"); document.getElementById('btnConfirmFulfill').innerText = "Confirm"; closeModal('fulfillModal'); applyFilters();
         }
-
-        async function updateSheet(id, type, val) {
-             await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=${type}&value=${encodeURIComponent(val)}`);
-             showToast("Updated");
-             applyFilters();
-        }
-
+        async function updateSheet(id, type, val) { await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=${type}&value=${encodeURIComponent(val)}`); showToast("Updated"); applyFilters(); }
         async function downloadExcel() {
-            let btn = document.querySelector('.btn-export');
-            let originalText = btn.innerHTML;
-            btn.innerHTML = "Downloading...";
-            btn.disabled = true;
-
+            let btn = document.querySelector('.btn-export'); btn.innerHTML = "Downloading..."; btn.disabled = true;
             try {
-                let dFrom = document.getElementById('dateFrom').value;
-                let dTo = document.getElementById('dateTo').value;
-                let url = `${SCRIPT_URL}?action=getSheetOrders&export=true`;
-                if(dFrom && dTo) url += `&dateFrom=${dFrom}&dateTo=${dTo}`;
-
-                let res = await fetch(url);
-                let data = await res.json();
-
+                let dFrom = document.getElementById('dateFrom').value; let dTo = document.getElementById('dateTo').value;
+                let url = `${SCRIPT_URL}?action=getSheetOrders&export=true`; if(dFrom && dTo) url += `&dateFrom=${dFrom}&dateTo=${dTo}`;
+                let res = await fetch(url); let data = await res.json();
                 if (data.status === "success" && data.orders && data.orders.length > 0) {
-                    let csvContent = "\uFEFF"; 
-                    csvContent += "Date,Order ID,Name,Number,Address,Amount,Note,Status,Invoice\n";
-
+                    let csvContent = "\uFEFFDate,Order ID,Name,Number,Address,Amount,Note,Status,Invoice\n";
                     data.orders.forEach(o => {
                         const escape = (val) => {
-                            if (val === null || val === undefined) return "";
-                            let str = String(val);
-                            if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
-                                return `"${str.replace(/"/g, '""')}"`;
-                            }
-                            return str;
+                            if (val === null || val === undefined) return ""; let str = String(val);
+                            if (str.includes(",") || str.includes("\"") || str.includes("\n")) return `"${str.replace(/"/g, '""')}"`; return str;
                         };
-                        let row = [
-                            escape(new Date(o.date).toLocaleDateString('en-GB')),
-                            escape(o.id),
-                            escape(o.name),
-                            escape("'" + (o.number || "")), 
-                            escape(o.address),
-                            escape(o.amount),
-                            escape(o.note),
-                            escape(o.status),
-                            escape("'" + (o.invoice || "")) 
-                        ].join(",");
-                        csvContent += row + "\n";
+                        csvContent += [escape(new Date(o.date).toLocaleDateString('en-GB')), escape(o.id), escape(o.name), escape("'" + (o.number || "")), escape(o.address), escape(o.amount), escape(o.note), escape(o.status), escape("'" + (o.invoice || ""))].join(",") + "\n";
                     });
-
-                    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    let link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "Order_List_" + new Date().toISOString().slice(0,10) + ".csv";
-                    document.body.appendChild(link); 
-                    link.click(); 
-                    document.body.removeChild(link);
-                    showToast("Download started");
-                } else {
-                    showToast("No data to export");
-                }
-            } catch (e) { showToast("Export failed"); } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+                    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); let link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "Order_List_" + new Date().toISOString().slice(0,10) + ".csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast("Download started");
+                } else { showToast("No data to export"); }
+            } catch (e) { showToast("Export failed"); } finally { btn.innerHTML = "⬇️ Excel"; btn.disabled = false; }
         }
-
-        // --- UPDATED: SEQUENTIAL ASYNC DOWNLOAD ---
         async function downloadImages(urls) {
              showToast("Downloading " + urls.length + " images...");
              for(let i=0; i<urls.length; i++) {
                  try {
-                     let response = await fetch(urls[i]);
-                     let blob = await response.blob();
-                     let blobUrl = window.URL.createObjectURL(blob);
-                     let a = document.createElement('a');
-                     a.href = blobUrl;
-                     a.download = `product-img-${i+1}.jpg`;
-                     document.body.appendChild(a);
-                     a.click();
-                     document.body.removeChild(a);
-                     window.URL.revokeObjectURL(blobUrl);
+                     let response = await fetch(urls[i]); let blob = await response.blob(); let blobUrl = window.URL.createObjectURL(blob);
+                     let a = document.createElement('a'); a.href = blobUrl; a.download = `product-img-${i+1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(blobUrl);
                  } catch(e) {
-                     // Fallback for CORS or Fetch error
-                     let a = document.createElement('a'); 
-                     a.href = urls[i]; 
-                     a.target="_blank"; 
-                     a.download = `img-${i+1}.jpg`;
-                     document.body.appendChild(a); 
-                     a.click(); 
-                     document.body.removeChild(a);
-                 }
-                 // Delay to prevent spam blocking
-                 await new Promise(r => setTimeout(r, 1000));
+                     let a = document.createElement('a'); a.href = urls[i]; a.target="_blank"; a.download = `img-${i+1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                 } await new Promise(r => setTimeout(r, 1000));
              }
         }
-        
         function copyToClipboard(txt) {
-            const textarea = document.createElement("textarea");
-            textarea.value = txt;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
-            showToast("Copied: " + txt);
+            const textarea = document.createElement("textarea"); textarea.value = txt; document.body.appendChild(textarea);
+            textarea.select(); document.execCommand("copy"); document.body.removeChild(textarea); showToast("Copied: " + txt + "");
         }
-
-        function showToast(msg) {
-             let x = document.getElementById("toast"); x.className = "show"; x.innerText = msg;
-             setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000);
-        }
+        function showToast(msg) { let x = document.getElementById("toast"); x.className = "show"; x.innerText = msg; setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000); }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        
-        function showPreview(images, idx) {
-             currentPreviewImages = images; currentPreviewIndex = idx;
-             document.getElementById('previewImgSrc').src = images[idx];
-             document.getElementById('imgPreview').style.display = 'flex';
+        function openEditCustomerModal(id, name, phone, address) {
+            document.getElementById('ec_orderId').value = id; document.getElementById('ec_name').value = name;
+            document.getElementById('ec_phone').value = phone; document.getElementById('ec_address').value = address;
+            document.getElementById('editCustomerModal').style.display = 'flex';
         }
-        function navigatePreview(dir) {
-             let newIndex = currentPreviewIndex + dir;
-             if(newIndex >= 0 && newIndex < currentPreviewImages.length) {
-                 currentPreviewIndex = newIndex;
-                 document.getElementById('previewImgSrc').src = currentPreviewImages[currentPreviewIndex];
-             }
+        async function saveOrderCustomerDetails() {
+            let id = document.getElementById('ec_orderId').value; let name = document.getElementById('ec_name').value;
+            let phone = document.getElementById('ec_phone').value; let address = document.getElementById('ec_address').value;
+            let btn = document.querySelector('#editCustomerModal button'); btn.innerText = "Saving...";
+            try {
+                let url = `${SCRIPT_URL}?action=updateOrderCustomer&oID=${id}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
+                let res = await fetch(url); let data = await res.json();
+                if(data.status === 'success') { showToast("Customer info updated"); closeModal('editCustomerModal'); applyFilters(); } 
+                else { showToast("Error updating info"); }
+            } catch(e) { showToast("Connection Error"); } finally { btn.innerText = "Save Changes"; }
         }
     </script>
 </body>
