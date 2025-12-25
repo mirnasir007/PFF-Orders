@@ -121,7 +121,8 @@
         .img-nav:hover { background: rgba(0,0,0,0.6); }
         .prev-btn { left: 10px; } .next-btn { right: 10px; }
         .img-caption { width: 100%; background: rgba(0,0,0,0.8); color: #fff; padding: 15px; text-align: center; font-size: 13px; z-index: 2010; cursor: default; }
-        .img-caption-title { font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #4effcd; }
+        .img-caption-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; color: #4effcd; }
+        .img-caption-type { font-size: 11px; color: #ddd; margin-bottom: 4px; font-weight: 500; font-style: italic; }
         #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
@@ -209,7 +210,7 @@
                      <input type="text" id="cNumber" placeholder="017xxxxxxxx" onkeypress="handleEnter(event)" oninput="handleCustomerNumberInput(this)">
                     <button class="btn btn-secondary" id="btnCheck" onclick="checkCustomer()">Check</button>
                 </div>
-                <div id="numWarning" style="color:red; font-size:11px;"></div>
+                <div id="numWarning" style="color:red; font-size:11px; margin-top:5px;"></div>
             </div>
             <div id="customerDetails" style="display:none;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
@@ -293,7 +294,9 @@
             <h3 id="invModalTitle">Enter Invoice Number</h3>
             <input type="hidden" id="invOrderId">
             <p style="font-size:12px; color:#666;">13 digits required</p>
-            <input type="text" id="invoiceInput" placeholder="0xxxxxxxxxxxx" maxlength="13">
+            <input type="text" id="invoiceInput" placeholder="0xxxxxxxxxxxx" maxlength="13" oninput="handleInvoiceInput(this)">
+            <div id="invWarning" style="color:#d82c0d; font-size:12px; font-weight:600; margin-top:5px; display:none;">Wrong Invoice</div>
+            
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn btn-danger" id="btnDeleteInv" onclick="deleteInvoice()" style="display:none; flex:1;">Delete</button>
                 <button class="btn" id="btnSaveInvoice" onclick="confirmInvoice()" style="flex:2;">Save</button>
@@ -347,6 +350,7 @@
         <span class="img-nav next-btn" id="nextBtn" onclick="navigatePreview(1); event.stopPropagation();">&#10095;</span>
         <div class="img-caption" onclick="event.stopPropagation()">
             <div class="img-caption-title" id="capTitle"></div>
+            <div class="img-caption-type" id="capType"></div>
             <div id="capDesc"></div>
         </div>
     </div>
@@ -499,9 +503,9 @@
                              productInfoList.push(v);
                          }
                          if(item.product_id && images[item.product_id]) {
-                             // Correctly extract src from object or string
                              let imgData = images[item.product_id];
                              let imgSrc = (typeof imgData === 'object' && imgData.src) ? imgData.src : imgData;
+                             let pType = (typeof imgData === 'object' && imgData.type) ? imgData.type : '';
                              
                              let existing = orderGallery.find(g => g.src === imgSrc);
                              if(!existing) {
@@ -509,7 +513,8 @@
                                      src: imgSrc,
                                      title: item.title,
                                      variant: item.variant_title || '',
-                                     price: item.price
+                                     price: item.price,
+                                     type: pType
                                  });
                              }
                          }
@@ -522,7 +527,6 @@
 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
-                         // Extract Image and Type
                          let imgData = images[item.product_id];
                          let img = 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
                          let pType = '';
@@ -532,7 +536,7 @@
                                  img = imgData.src || img;
                                  pType = imgData.type || '';
                              } else {
-                                 img = imgData; // Legacy support
+                                 img = imgData; 
                              }
                          }
 
@@ -588,7 +592,6 @@
                 }
 
                 let extraActions = '';
-                // NEW LOGIC: Show Invoice if exists or Product Entry status
                 let showInvoice = (isListed && (saved.invoice || (saved.status && saved.status.toLowerCase().includes('product entry'))));
                 
                 if (showInvoice) {
@@ -602,10 +605,8 @@
                      }
                 }
 
-                // NEW STRICT LOGIC for Fulfill Button
                 if (isListed && saved.status) {
                     let sLower = saved.status.toLowerCase();
-                    // Show fulfill button ONLY if status has 'product entry' and is not 'courier'
                     if (sLower.includes('product entry') && !sLower.includes('courier')) {
                         extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
                     }
@@ -799,8 +800,16 @@
              const src = data.src ? data.src : data; 
              img.src = src; img.classList.remove('zoomed');
              img.style.transformOrigin = "center center"; img.style.transform = "scale(1)"; isZoomed = false;
-             if (data.title) { document.getElementById('capTitle').innerText = data.title; document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; } 
-             else { document.getElementById('capTitle').innerText = ""; document.getElementById('capDesc').innerText = ""; }
+             if (data.title) { 
+                 document.getElementById('capTitle').innerText = data.title; 
+                 // Updated Type
+                 document.getElementById('capType').innerText = data.type || ''; 
+                 document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; 
+             } else { 
+                 document.getElementById('capTitle').innerText = ""; 
+                 document.getElementById('capType').innerText = "";
+                 document.getElementById('capDesc').innerText = ""; 
+             }
         }
         function navigatePreview(dir) {
              let newIndex = currentPreviewIndex + dir;
@@ -823,16 +832,27 @@
         function openAddModal(id, date, amount) {
             document.getElementById('m_orderId').value = id; document.getElementById('m_orderDate').value = date;
             document.getElementById('m_amount').value = amount; document.getElementById('cNumber').value = '';
-            document.getElementById('customerDetails').style.display = 'none'; document.getElementById('addModal').style.display = 'flex';
+            document.getElementById('customerDetails').style.display = 'none'; 
+            // Reset warning
+            document.getElementById('numWarning').innerText = "";
+            document.getElementById('cNumber').style.borderColor = "#babfc3";
+            document.getElementById('addModal').style.display = 'flex';
         }
         function handleCustomerNumberInput(input) {
             let val = input.value.replace(/[^0-9]/g, ''); if (val.startsWith('880')) val = val.substring(3);
             if (val.length > 0 && !val.startsWith('0')) val = '0' + val; input.value = val;
             let warn = document.getElementById('numWarning');
-            if (val.length === 11) { input.style.borderColor = 'green'; warn.innerText = ""; } else { input.style.borderColor = 'red'; warn.innerText = "Must be 11 digits"; }
+            if (val.length === 11) { input.style.borderColor = 'green'; warn.innerText = ""; } else { input.style.borderColor = 'red'; warn.innerText = ""; }
         }
         async function checkCustomer() {
-             let num = document.getElementById('cNumber').value; if(num.length !== 11) { alert("Please enter a valid 11-digit number."); return; }
+             let num = document.getElementById('cNumber').value; 
+             // Modified Validation logic
+             if(num.length !== 11) { 
+                 document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number";
+                 return; 
+             }
+             document.getElementById('numWarning').innerText = "";
+             
              let btn = document.getElementById('btnCheck'); let originalText = btn.innerText; btn.innerText = "Checking...";
              try {
                  let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`); let data = await res.json();
@@ -863,7 +883,7 @@
              } catch(e) { showToast("Update Failed"); } finally { btn.innerText = "Update Data"; }
         }
         async function saveToSheet() {
-             let num = document.getElementById('cNumber').value; if(num.length !== 11) { alert("Invalid Number"); return; }
+             let num = document.getElementById('cNumber').value; if(num.length !== 11) { document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number"; return; }
              let btn = document.getElementById('btnSave'); btn.innerText = "Saving...";
              try {
                  let p = { action: 'saveOrder', oID: document.getElementById('m_orderId').value, oDate: document.getElementById('m_orderDate').value,
@@ -924,14 +944,61 @@
         function openInvoiceModal(id, val, isEdit = false) {
             document.getElementById('invOrderId').value = id; document.getElementById('invoiceInput').value = val || ''; isEditingInvoice = isEdit;
             document.getElementById('invModalTitle').innerText = isEdit ? 'Edit Invoice' : 'Enter Invoice Number';
-            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none'; document.getElementById('invoiceModal').style.display = 'flex';
+            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none'; 
+            
+            // Reset validation state on open
+            let invInp = document.getElementById('invoiceInput');
+            invInp.style.borderColor = '#babfc3';
+            invInp.style.color = '#000';
+            document.getElementById('invWarning').style.display = 'none';
+            if(val && val.length === 13) {
+                invInp.style.borderColor = 'green';
+                invInp.style.color = 'green';
+            }
+            
+            document.getElementById('invoiceModal').style.display = 'flex';
         }
+        
+        // NEW INVOICE VALIDATION
+        function handleInvoiceInput(el) {
+            // Remove non-numeric characters
+            let val = el.value.replace(/[^0-9]/g, '');
+            el.value = val;
+            
+            let warn = document.getElementById('invWarning');
+            
+            if(val.length === 13) {
+                el.style.borderColor = 'green';
+                el.style.color = 'green';
+                warn.style.display = 'none';
+            } else {
+                el.style.borderColor = 'red';
+                el.style.color = 'red';
+                // warning hidden while typing, shown on save
+            }
+        }
+
         function deleteInvoice() { openConfirmModal("Delete this invoice?", function() { updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE'); closeModal('invoiceModal'); }); }
+        
         async function confirmInvoice() {
-             let btn = document.getElementById('btnSaveInvoice'); btn.innerText = "Saving...";
-             let id = document.getElementById('invOrderId').value; let inv = document.getElementById('invoiceInput').value;
+             let btn = document.getElementById('btnSaveInvoice'); 
+             let id = document.getElementById('invOrderId').value; 
+             let invInput = document.getElementById('invoiceInput');
+             let inv = invInput.value;
+             let warn = document.getElementById('invWarning');
+
+             // Validation Check
+             if(inv.length !== 13) {
+                 invInput.style.borderColor = 'red';
+                 invInput.style.color = 'red';
+                 warn.style.display = 'block'; // Show "Wrong Invoice"
+                 return; 
+             } else {
+                 warn.style.display = 'none';
+             }
+
+             btn.innerText = "Saving...";
              try {
-                 if(inv.length !== 13) { showToast("13 digits required"); return; }
                  if(pendingStatusUpdate) {
                      let s = pendingStatusUpdate.statuses.join(', '); if(s) s += ", "; s += "Product Entry";
                      await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`); pendingStatusUpdate = null;
