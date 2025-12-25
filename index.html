@@ -113,7 +113,7 @@
         #confirmModal .modal-box { max-width: 350px; text-align: center; }
         .img-preview { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:2000; justify-content:center; align-items:center; touch-action: none; flex-direction: column; cursor: pointer; }
         .preview-content { flex: 1; width: 100%; display: flex; justify-content: center; align-items: center; overflow: hidden; position: relative; pointer-events: none; }
-        .preview-content img { max-width: 100%; max-height: 90vh; border-radius:0; transition: transform 0.2s ease; cursor: zoom-in; object-fit: contain; pointer-events: auto; }
+        .preview-content img { max-width: 100%; max-height: 90vh; border-radius:0; transition: transform 0.1s ease-out; cursor: grab; object-fit: contain; pointer-events: auto; }
         .preview-content img.zoomed { cursor: move; cursor: grab; }
         .preview-content img.zoomed:active { cursor: grabbing; }
         .close-preview { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 2020; }
@@ -122,7 +122,8 @@
         .prev-btn { left: 10px; } .next-btn { right: 10px; }
         .img-caption { width: 100%; background: rgba(0,0,0,0.8); color: #fff; padding: 15px; text-align: center; font-size: 13px; z-index: 2010; cursor: default; }
         .img-caption-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; color: #4effcd; }
-        .img-caption-type { font-size: 11px; color: #ddd; margin-bottom: 4px; font-weight: 500; font-style: italic; }
+        .img-caption-type { font-size: 11px; color: #ddd; margin-bottom: 2px; font-weight: 500; font-style: italic; }
+        .img-caption-sku { font-size: 11px; color: #ffeb3b; margin-bottom: 4px; font-weight: 600; font-family: monospace; }
         #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 3000; left: 50%; bottom: 30px; transform: translateX(-50%); }
         #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
@@ -296,7 +297,6 @@
             <p style="font-size:12px; color:#666;">13 digits required</p>
             <input type="text" id="invoiceInput" placeholder="0xxxxxxxxxxxx" maxlength="13" oninput="handleInvoiceInput(this)">
             <div id="invWarning" style="color:#d82c0d; font-size:12px; font-weight:600; margin-top:5px; display:none;">Wrong Invoice</div>
-            
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <button class="btn btn-danger" id="btnDeleteInv" onclick="deleteInvoice()" style="display:none; flex:1;">Delete</button>
                 <button class="btn" id="btnSaveInvoice" onclick="confirmInvoice()" style="flex:2;">Save</button>
@@ -351,6 +351,7 @@
         <div class="img-caption" onclick="event.stopPropagation()">
             <div class="img-caption-title" id="capTitle"></div>
             <div class="img-caption-type" id="capType"></div>
+            <div class="img-caption-sku" id="capSku"></div>
             <div id="capDesc"></div>
         </div>
     </div>
@@ -367,7 +368,13 @@
         let allOrdersCache = []; 
         let currentEditOrderItems = [];
         let gl_images = {}; 
+        
+        // ZOOM VARIABLES
         let isZoomed = false;
+        let scale = 1;
+        let pointX = 0, pointY = 0;
+        let startX = 0, startY = 0;
+        let panning = false;
 
         window.onload = function() {
             applyFilters();
@@ -388,11 +395,125 @@
                     if(e.key === 'Escape') closeModal('imgPreview');
                 }
             });
+            
+            // --- PINCH TO ZOOM HANDLERS ---
             const pImg = document.getElementById('previewImgSrc');
+            
+            // Mouse (Desktop)
+            pImg.addEventListener('mousedown', startPan);
             pImg.addEventListener('mousemove', panImage);
-            pImg.addEventListener('touchmove', panImage, {passive: false});
+            pImg.addEventListener('mouseup', endPan);
+            pImg.addEventListener('mouseleave', endPan);
+
+            // Touch (Mobile - Pinch)
+            pImg.addEventListener('touchstart', handleTouchStart, {passive: false});
+            pImg.addEventListener('touchmove', handleTouchMove, {passive: false});
+            pImg.addEventListener('touchend', handleTouchEnd);
         };
         
+        // --- ZOOM & PAN LOGIC ---
+        let evCache = [];
+        let prevDiff = -1;
+        
+        function handleTouchStart(e) {
+            if(e.touches.length === 2) {
+                e.preventDefault(); // prevent browser zoom
+            }
+            if(e.touches.length === 1 && scale > 1) {
+                 panning = true;
+                 startX = e.touches[0].clientX - pointX;
+                 startY = e.touches[0].clientY - pointY;
+            }
+            for (let i = 0; i < e.touches.length; i++) {
+                evCache.push(e.touches[i]);
+            }
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            // 2-finger Pinch
+            if (e.touches.length === 2 && evCache.length === 2) {
+                const curDiff = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+
+                if (prevDiff > 0) {
+                    if (curDiff > prevDiff) scale += 0.05; // zoom in
+                    if (curDiff < prevDiff) scale -= 0.05; // zoom out
+                    if (scale < 1) scale = 1; 
+                }
+                prevDiff = curDiff;
+                updateTransform();
+            }
+            // 1-finger Pan (if zoomed)
+            else if (e.touches.length === 1 && scale > 1) {
+                 pointX = e.touches[0].clientX - startX;
+                 pointY = e.touches[0].clientY - startY;
+                 updateTransform();
+            }
+        }
+
+        function handleTouchEnd(e) {
+            // Remove touch from cache
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                remove_event(e.changedTouches[i]);
+            }
+            if (evCache.length < 2) prevDiff = -1;
+            if (e.touches.length === 0) panning = false;
+        }
+
+        function remove_event(ev) {
+            for (let i = 0; i < evCache.length; i++) {
+                if (evCache[i].identifier === ev.identifier) {
+                    evCache.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        // Standard Toggle Zoom (Double Tap/Click)
+        function toggleSmartZoom(e) {
+            e.stopPropagation(); 
+            const img = e.target;
+            if (scale > 1) {
+                // Reset
+                scale = 1; pointX = 0; pointY = 0;
+            } else {
+                // Zoom in
+                scale = 2.5;
+                // Center zoom mostly
+                pointX = 0; pointY = 0; 
+            }
+            updateTransform();
+        }
+
+        function updateTransform() {
+            const img = document.getElementById('previewImgSrc');
+            img.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // Desktop Mouse Pan
+        function startPan(e) {
+            if(scale <= 1) return;
+            e.preventDefault();
+            panning = true;
+            startX = e.clientX - pointX;
+            startY = e.clientY - pointY;
+            e.target.style.cursor = 'grabbing';
+        }
+        function endPan(e) {
+            panning = false;
+            e.target.style.cursor = scale > 1 ? 'grab' : 'zoom-in';
+        }
+        function panImage(e) {
+            if (!panning || scale <= 1) return;
+            e.preventDefault();
+            pointX = e.clientX - startX;
+            pointY = e.clientY - startY;
+            updateTransform();
+        }
+
         function showLoading() {
             const bar = document.getElementById('loadingBar');
             bar.classList.add('active');
@@ -506,7 +627,8 @@
                              let imgData = images[item.product_id];
                              let imgSrc = (typeof imgData === 'object' && imgData.src) ? imgData.src : imgData;
                              let pType = (typeof imgData === 'object' && imgData.type) ? imgData.type : '';
-                             
+                             let pSku = (typeof imgData === 'object' && imgData.sku) ? imgData.sku : (item.sku || ''); // Prefer saved SKU, fallback to item SKU
+
                              let existing = orderGallery.find(g => g.src === imgSrc);
                              if(!existing) {
                                  orderGallery.push({
@@ -514,7 +636,8 @@
                                      title: item.title,
                                      variant: item.variant_title || '',
                                      price: item.price,
-                                     type: pType
+                                     type: pType,
+                                     sku: pSku // Store SKU
                                  });
                              }
                          }
@@ -792,48 +915,38 @@
 
         function showPreview(images, idx) {
              currentPreviewImages = images; currentPreviewIndex = idx;
+             scale = 1; pointX = 0; pointY = 0; // Reset Zoom
              updatePreviewContent(); document.getElementById('imgPreview').style.display = 'flex';
         }
         function updatePreviewContent() {
              const img = document.getElementById('previewImgSrc');
              const data = currentPreviewImages[currentPreviewIndex];
              const src = data.src ? data.src : data; 
-             img.src = src; img.classList.remove('zoomed');
-             img.style.transformOrigin = "center center"; img.style.transform = "scale(1)"; isZoomed = false;
+             img.src = src; 
+             img.style.transform = "translate(0,0) scale(1)"; 
+             
              if (data.title) { 
                  document.getElementById('capTitle').innerText = data.title; 
-                 // Updated Type
                  document.getElementById('capType').innerText = data.type || ''; 
+                 // Updated SKU Display
+                 document.getElementById('capSku').innerText = data.sku ? `SKU: ${data.sku}` : '';
                  document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; 
              } else { 
                  document.getElementById('capTitle').innerText = ""; 
                  document.getElementById('capType').innerText = "";
+                 document.getElementById('capSku').innerText = "";
                  document.getElementById('capDesc').innerText = ""; 
              }
         }
         function navigatePreview(dir) {
              let newIndex = currentPreviewIndex + dir;
-             if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; updatePreviewContent(); }
-        }
-        function toggleSmartZoom(e) {
-            e.stopPropagation(); const img = e.target; isZoomed = !isZoomed;
-            if (isZoomed) {
-                img.classList.add('zoomed'); const rect = img.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100;
-                img.style.transformOrigin = `${x}% ${y}%`; img.style.transform = "scale(2.5)";
-            } else { img.classList.remove('zoomed'); img.style.transform = "scale(1)"; img.style.transformOrigin = "center center"; }
-        }
-        function panImage(e) {
-            if (!isZoomed) return; e.preventDefault(); const img = document.getElementById('previewImgSrc'); const rect = img.getBoundingClientRect();
-            let clientX, clientY; if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } else { clientX = e.clientX; clientY = e.clientY; }
-            const x = ((clientX - rect.left) / rect.width) * 100; const y = ((clientY - rect.top) / rect.height) * 100; img.style.transformOrigin = `${x}% ${y}%`;
+             if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; showPreview(currentPreviewImages, newIndex); }
         }
 
         function openAddModal(id, date, amount) {
             document.getElementById('m_orderId').value = id; document.getElementById('m_orderDate').value = date;
             document.getElementById('m_amount').value = amount; document.getElementById('cNumber').value = '';
             document.getElementById('customerDetails').style.display = 'none'; 
-            // Reset warning
             document.getElementById('numWarning').innerText = "";
             document.getElementById('cNumber').style.borderColor = "#babfc3";
             document.getElementById('addModal').style.display = 'flex';
@@ -846,7 +959,6 @@
         }
         async function checkCustomer() {
              let num = document.getElementById('cNumber').value; 
-             // Modified Validation logic
              if(num.length !== 11) { 
                  document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number";
                  return; 
@@ -946,7 +1058,6 @@
             document.getElementById('invModalTitle').innerText = isEdit ? 'Edit Invoice' : 'Enter Invoice Number';
             document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none'; 
             
-            // Reset validation state on open
             let invInp = document.getElementById('invoiceInput');
             invInp.style.borderColor = '#babfc3';
             invInp.style.color = '#000';
@@ -959,14 +1070,10 @@
             document.getElementById('invoiceModal').style.display = 'flex';
         }
         
-        // NEW INVOICE VALIDATION
         function handleInvoiceInput(el) {
-            // Remove non-numeric characters
             let val = el.value.replace(/[^0-9]/g, '');
             el.value = val;
-            
             let warn = document.getElementById('invWarning');
-            
             if(val.length === 13) {
                 el.style.borderColor = 'green';
                 el.style.color = 'green';
@@ -974,7 +1081,6 @@
             } else {
                 el.style.borderColor = 'red';
                 el.style.color = 'red';
-                // warning hidden while typing, shown on save
             }
         }
 
@@ -987,11 +1093,10 @@
              let inv = invInput.value;
              let warn = document.getElementById('invWarning');
 
-             // Validation Check
              if(inv.length !== 13) {
                  invInput.style.borderColor = 'red';
                  invInput.style.color = 'red';
-                 warn.style.display = 'block'; // Show "Wrong Invoice"
+                 warn.style.display = 'block'; 
                  return; 
              } else {
                  warn.style.display = 'none';
