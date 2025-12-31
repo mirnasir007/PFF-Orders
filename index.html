@@ -38,10 +38,6 @@
         .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333; }
         .btn-secondary:hover { background: #f6f6f7; }
         .btn-danger { background: #d82c0d; color: white; border: none; }
-        .btn-warning { background: #ff9800; color: white; border: none; }
-        .btn-warning:hover { background: #f57c00; }
-        .btn-return { background: #9c27b0; color: white; border: none; }
-        .btn-return:hover { background: #7b1fa2; }
         .btn-sm { padding: 4px 8px; font-size: 11px; margin-top: 5px; }
         .btn-export { background: #107c41; color: white; display: flex; align-items: center; gap: 5px; margin-left: 10px; }
         .btn-export:hover { background: #0b5c30; }
@@ -54,7 +50,6 @@
         .status-product-entry { background: #e3f1df; color: #202223; border: 1px solid #c4f5cd; }
         .status-courier { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
         .status-void { background: #ffe5e5; color: #d82c0d; border: 1px solid #ffcccc; }
-        .status-returned { background: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
         .content-area { padding: 20px; position: relative; flex: 1; overflow-y: auto; }
         .order-card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; gap: 10px; border-left: 4px solid var(--primary); }
         .order-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -75,11 +70,8 @@
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px; }
         .p-item { text-align: center; font-size: 11px; display: flex; flex-direction: column; align-items: center; position: relative; }
         .p-item.removed { opacity: 0.6; }
-        .p-item.returned { opacity: 0.8; }
         .p-item.removed .p-img { filter: grayscale(100%); border: 1px solid #ccc; }
-        .p-item.returned .p-img { filter: sepia(100%) hue-rotate(270deg); border: 1px solid #9c27b0; }
         .removed-badge { position: absolute; top: 35px; left: 50%; transform: translate(-50%, -50%); background: rgba(220, 38, 38, 0.9); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; pointer-events: none; z-index: 2; }
-        .returned-badge { position: absolute; top: 35px; left: 50%; transform: translate(-50%, -50%); background: rgba(156, 39, 176, 0.9); color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; pointer-events: none; z-index: 2; }
         .p-img { width: 100%; height: 90px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; cursor: zoom-in; transition: transform 0.2s; }
         .p-img:hover { transform: scale(1.05); }
         .variant-text { font-size: 10px; color: #555; background: #f4f4f4; padding: 2px 4px; border-radius: 4px; margin-top: 4px; }
@@ -114,7 +106,6 @@
         .edit-item-price { font-weight: 700; font-size: 12px; width: 60px; text-align: right; }
         .edit-item-actions { display: flex; align-items: center; gap: 8px; }
         .removed-text { text-decoration: line-through; color: #999; }
-        .returned-text { text-decoration: line-through; color: #9c27b0 !important; }
         .restock-label { font-size: 10px; display: flex; align-items: center; gap: 3px; cursor: pointer; }
         .search-result-item { display: flex; gap: 10px; padding: 8px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; align-items: center; }
         .search-result-item img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; cursor: pointer; }
@@ -570,23 +561,19 @@
                 let isListed = !!saved;
                 let statusBadge = '';
                 let isOrderVoid = false;
-                let isOrderFulfilled = false;
 
                 if (isListed) {
                     let s = saved.status || "Pending";
                     let sClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
                                  s.toLowerCase().includes('courier') ? 'status-courier' :
-                                 s.toLowerCase().includes('void') ? 'status-void' : 
-                                 s.toLowerCase().includes('return') ? 'status-returned' : 'status-pending';
+                                 s.toLowerCase().includes('void') ? 'status-void' : 'status-pending';
                     statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}')">${s}</span>`;
                     if(s.toLowerCase().includes('void')) isOrderVoid = true;
-                    if(s.toLowerCase().includes('courier')) isOrderFulfilled = true;
                 } else {
                     let s = order.financial_status;
                     let sClass = s === 'paid' ? 'status-paid' : (s === 'voided' ? 'status-voided' : 'status-pending');
                     statusBadge = `<span class="status-badge ${sClass}">${s}</span>`;
                     if(s === 'voided') isOrderVoid = true;
-                    if(order.fulfillments && order.fulfillments.length > 0) isOrderFulfilled = true;
                 }
 
                 let addBtn = isListed ? '' : `<button class="btn btn-sm" onclick="openAddModal('${id}', '${new Date(order.created_at).toLocaleDateString()}', '${order.total_price}')">Add to List</button>`;
@@ -596,38 +583,13 @@
                 
                 if(order.line_items) {
                     order.line_items.forEach(item => {
-                         // Check if item is returned (from Shopify or custom app)
-                         let isReturned = false;
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
-                         if(isOrderVoid) isRemoved = true;
-                         
-                         // Check for returns in note
-                         if (saved && saved.note && saved.note.includes("RETURN")) {
-                             try {
-                                 let noteLines = saved.note.split('\n');
-                                 for (let line of noteLines) {
-                                     if (line.includes("RETURN:")) {
-                                         let returnData = JSON.parse(line.replace("RETURN: ", ""));
-                                         if (returnData.returns) {
-                                             for (let ret of returnData.returns) {
-                                                 if (ret.variantId == item.variant_id) {
-                                                     isReturned = true;
-                                                     isRemoved = false;
-                                                     break;
-                                                 }
-                                             }
-                                         }
-                                     }
-                                 }
-                             } catch(e) {}
-                         }
-                         
-                         if(!isRemoved && !isReturned && item.vendor) {
+                         if(isOrderVoid) isRemoved = true; 
+                         if(!isRemoved && item.vendor) {
                              let v = item.vendor;
                              if(item.variant_title && item.variant_title !== 'Default Title') v += "," + item.variant_title;
                              productInfoList.push(v);
                          }
-                         
                          if(item.product_id && images[item.product_id]) {
                              let imgData = images[item.product_id];
                              let imgSrc = (typeof imgData === 'object' && imgData.src) ? imgData.src : imgData;
@@ -643,10 +605,7 @@
                                      price: item.price,
                                      type: pType,
                                      sku: pSku,
-                                     pid: item.product_id,
-                                     variant_id: item.variant_id,
-                                     isReturned: isReturned,
-                                     isRemoved: isRemoved
+                                     pid: item.product_id // IMPORTANT for inventory
                                  });
                              }
                          }
@@ -673,29 +632,6 @@
                          }
 
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
-                         let isReturned = false;
-                         
-                         // Check for returns
-                         if (saved && saved.note && saved.note.includes("RETURN")) {
-                             try {
-                                 let noteLines = saved.note.split('\n');
-                                 for (let line of noteLines) {
-                                     if (line.includes("RETURN:")) {
-                                         let returnData = JSON.parse(line.replace("RETURN: ", ""));
-                                         if (returnData.returns) {
-                                             for (let ret of returnData.returns) {
-                                                 if (ret.variantId == item.variant_id) {
-                                                     isReturned = true;
-                                                     isRemoved = false;
-                                                     break;
-                                                 }
-                                             }
-                                         }
-                                     }
-                                 }
-                             } catch(e) {}
-                         }
-                         
                          if(isOrderVoid) isRemoved = true; 
 
                          let imgIndex = -1;
@@ -703,16 +639,9 @@
                          
                          let clickEvent = (imgIndex > -1) ? `onclick="showPreview(${galleryJson}, ${imgIndex}); event.stopPropagation();"` : '';
                          
-                         let badge = '';
-                         if (isReturned) {
-                             badge = '<div class="returned-badge">RETURNED</div>';
-                         } else if (isRemoved) {
-                             badge = '<div class="removed-badge">REMOVED</div>';
-                         }
-                         
                          productHtml += `
-                         <div class="p-item ${isRemoved?'removed':''} ${isReturned?'returned':''}">
-                            ${badge}
+                         <div class="p-item ${isRemoved?'removed':''}">
+                            ${isRemoved ? '<div class="removed-badge">REMOVED</div>' : ''}
                             <img src="${img}" class="p-img" ${clickEvent}>
                             <div style="font-weight:600;margin-top:3px;">${item.quantity}x</div>
                             <div class="variant-text">${item.variant_title || ''}</div>
@@ -774,7 +703,7 @@
                     }
                 }
                 
-                let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid}, ${isOrderFulfilled})">Edit</span>` : '';
+                let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
                 let dateStr = new Date(order.created_at).toLocaleDateString('en-GB');
                 let displayAmount = isListed ? saved.amount : (order.current_total_price || order.total_price);
 
@@ -827,10 +756,7 @@
                  document.getElementById('capTitle').innerText = data.title; 
                  document.getElementById('capType').innerText = data.type || ''; 
                  document.getElementById('capSku').innerText = data.sku ? `SKU: ${data.sku}` : '';
-                 let desc = `${data.variant || ''} - ${data.price}`;
-                 if (data.isReturned) desc += ' (RETURNED)';
-                 if (data.isRemoved) desc += ' (REMOVED)';
-                 document.getElementById('capDesc').innerText = desc; 
+                 document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; 
              } else { 
                  document.getElementById('capTitle').innerText = ""; 
                  document.getElementById('capType').innerText = "";
@@ -910,11 +836,10 @@
             }
         }
 
-        // --- EDIT ORDER MODAL LOGIC ---
-        async function openEditModal(orderId, currentAmount, isOrderVoid, isOrderFulfilled) {
+        // --- EDIT ORDER MODAL LOGIC (Existing) ---
+        function openEditModal(orderId, currentAmount, isOrderVoid) {
             let order = allOrdersCache.find(o => String(o.order_number) === String(orderId));
             if(!order) { showToast("Order details not found in cache"); return; }
-            
             document.getElementById('editOrderId').value = orderId;
             document.getElementById('editFinalAmount').value = currentAmount;
             let container = document.getElementById('editOrderList');
@@ -923,32 +848,11 @@
             document.getElementById('productSearchResults').style.display = 'none';
             document.getElementById('productSearchInput').value = '';
             currentEditOrderItems = []; 
-            
-            // Get line items with IDs for returns
-            let lineItemsRes = await fetch(`${SCRIPT_URL}?action=getOrderLineItems&orderId=${orderId}`);
-            let lineItemsData = await lineItemsRes.json();
-            let lineItemsMap = {};
-            if (lineItemsData.status === 'success' && lineItemsData.lineItems) {
-                lineItemsData.lineItems.forEach(item => {
-                    lineItemsMap[item.variant_id] = item.id;
-                });
-            }
-            
             if(order.line_items) {
                 order.line_items.forEach((item, idx) => {
                     let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
-                    let isReturned = false;
-                    
                     if(isOrderVoid) isRemoved = true; 
-                    
-                    currentEditOrderItems.push({ 
-                        ...item, 
-                        removed: isRemoved,
-                        returned: isReturned,
-                        restock: false, 
-                        isNew: false,
-                        line_item_id: lineItemsMap[item.variant_id] || null
-                    });
+                    currentEditOrderItems.push({ ...item, removed: isRemoved, restock: false, isNew: false });
                     
                     let imgData = (gl_images && gl_images[item.product_id]) ? gl_images[item.product_id] : null;
                     let imgUrl = 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png';
@@ -956,42 +860,17 @@
                          imgUrl = (typeof imgData === 'object') ? imgData.src : imgData;
                     }
 
-                    renderEditRow(idx, item.name, item.variant_title, item.quantity, item.price, imgUrl, isRemoved, isReturned, isOrderFulfilled);
+                    renderEditRow(idx, item.name, item.variant_title, item.quantity, item.price, imgUrl, isRemoved);
                 });
             }
             document.getElementById('editOrderModal').style.display = 'flex';
         }
 
-        function renderEditRow(idx, name, variant, qty, price, img, isRemoved = false, isReturned = false, isFulfilled = false) {
+        function renderEditRow(idx, name, variant, qty, price, img, isRemoved = false) {
             let container = document.getElementById('editOrderList');
             let div = document.createElement('div');
             div.className = 'edit-item-row';
             div.id = `edit-row-${idx}`;
-            
-            let actionButton = '';
-            let restockLabel = '';
-            
-            if (isFulfilled && !isRemoved && !isReturned) {
-                actionButton = `<button class="btn btn-sm btn-return" onclick="toggleReturnItem(${idx})" id="btn-return-${idx}">Return</button>`;
-                restockLabel = `<label class="restock-label" id="lbl-restock-${idx}" style="display:none;">
-                    <input type="checkbox" onchange="toggleRestock(${idx}, this.checked)"> Restock
-                </label>`;
-            } else if (isReturned) {
-                actionButton = `<button class="btn btn-sm btn-secondary" onclick="toggleReturnItem(${idx})" id="btn-return-${idx}">Undo Return</button>`;
-                restockLabel = `<label class="restock-label" id="lbl-restock-${idx}" style="display:flex;">
-                    <input type="checkbox" onchange="toggleRestock(${idx}, this.checked)"> Restock
-                </label>`;
-                div.classList.add('returned-text');
-            } else if (isRemoved) {
-                actionButton = `<button class="btn btn-sm btn-secondary" onclick="toggleRemoveItem(${idx})" id="btn-rm-${idx}">Undo</button>`;
-                restockLabel = `<label class="restock-label" id="lbl-restock-${idx}" style="display:flex;">
-                    <input type="checkbox" onchange="toggleRestock(${idx}, this.checked)"> Restock
-                </label>`;
-                div.classList.add('removed-text');
-            } else {
-                actionButton = `<button class="btn btn-sm btn-danger" onclick="toggleRemoveItem(${idx})" id="btn-rm-${idx}">Remove</button>`;
-            }
-            
             div.innerHTML = `
                 <img src="${img}" onclick="showPreview(['${img}'], 0); event.stopPropagation();">
                 <div class="edit-item-info">
@@ -1001,10 +880,13 @@
                 </div>
                 <div class="edit-item-price">${price}</div>
                 <div class="edit-item-actions">
-                    ${restockLabel}
-                    ${actionButton}
+                    <label class="restock-label" id="lbl-restock-${idx}" style="${isRemoved ? 'display:flex;' : 'display:none;'}">
+                        <input type="checkbox" onchange="toggleRestock(${idx}, this.checked)"> Restock
+                    </label>
+                    <button class="btn btn-sm ${isRemoved ? 'btn-secondary' : 'btn-danger'}" onclick="toggleRemoveItem(${idx})" id="btn-rm-${idx}">${isRemoved ? 'Undo' : 'Remove'}</button>
                 </div>
             `;
+            if(isRemoved) div.classList.add('removed-text');
             container.appendChild(div);
         }
 
@@ -1016,64 +898,22 @@
             let amtInput = document.getElementById('editFinalAmount');
             let currentTotal = parseFloat(amtInput.value) || 0;
             let itemTotal = parseFloat(item.price) * item.quantity;
-            
             if(!item.removed) {
-                item.removed = true;
-                item.returned = false;
-                row.classList.add('removed-text');
-                row.classList.remove('returned-text');
-                btn.innerText = "Undo";
-                btn.className = "btn btn-sm btn-secondary";
-                if(!item.isNew) restockLbl.style.display = "flex";
+                item.removed = true; row.classList.add('removed-text'); 
+                btn.innerText = "Undo"; btn.className = "btn btn-sm btn-secondary";
+                if(!item.isNew) restockLbl.style.display = "flex"; 
                 else row.remove();
                 amtInput.value = (currentTotal - itemTotal).toFixed(2);
             } else {
-                item.removed = false;
-                item.restock = false;
+                item.removed = false; item.restock = false; 
                 row.classList.remove('removed-text');
-                btn.innerText = "Remove";
-                btn.className = "btn btn-sm btn-danger";
+                btn.innerText = "Remove"; btn.className = "btn btn-sm btn-danger";
                 if(!item.isNew) restockLbl.style.display = "none";
-                let chk = document.querySelector(`#lbl-restock-${idx} input`);
-                if(chk) chk.checked = false;
+                let chk = document.querySelector(`#lbl-restock-${idx} input`); if(chk) chk.checked = false;
                 amtInput.value = (currentTotal + itemTotal).toFixed(2);
             }
         }
-
-        function toggleReturnItem(idx) {
-            let item = currentEditOrderItems[idx];
-            let row = document.getElementById(`edit-row-${idx}`);
-            let btn = document.getElementById(`btn-return-${idx}`);
-            let restockLbl = document.getElementById(`lbl-restock-${idx}`);
-            let amtInput = document.getElementById('editFinalAmount');
-            let currentTotal = parseFloat(amtInput.value) || 0;
-            let itemTotal = parseFloat(item.price) * item.quantity;
-            
-            if(!item.returned) {
-                item.returned = true;
-                item.removed = false;
-                row.classList.add('returned-text');
-                row.classList.remove('removed-text');
-                btn.innerText = "Undo Return";
-                btn.className = "btn btn-sm btn-secondary";
-                restockLbl.style.display = "flex";
-                amtInput.value = (currentTotal - itemTotal).toFixed(2);
-            } else {
-                item.returned = false;
-                item.restock = false;
-                row.classList.remove('returned-text');
-                btn.innerText = "Return";
-                btn.className = "btn btn-sm btn-return";
-                restockLbl.style.display = "none";
-                let chk = document.querySelector(`#lbl-restock-${idx} input`);
-                if(chk) chk.checked = false;
-                amtInput.value = (currentTotal + itemTotal).toFixed(2);
-            }
-        }
-
-        function toggleRestock(idx, checked) { 
-            currentEditOrderItems[idx].restock = checked; 
-        }
+        function toggleRestock(idx, checked) { currentEditOrderItems[idx].restock = checked; }
 
         async function searchProducts() {
             let q = document.getElementById('productSearchInput').value;
@@ -1109,9 +949,9 @@
             let idx = currentEditOrderItems.length;
             currentEditOrderItems.push({
                 variant_id: varId, product_id: prodId, name: title, variant_title: varTitle,
-                price: price, quantity: 1, removed: false, returned: false, restock: false, isNew: true
+                price: price, quantity: 1, removed: false, restock: false, isNew: true
             });
-            renderEditRow(idx, title, varTitle, 1, price, img || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png', false, false, false);
+            renderEditRow(idx, title, varTitle, 1, price, img || 'https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png');
             let amtInput = document.getElementById('editFinalAmount');
             let currentTotal = parseFloat(amtInput.value) || 0;
             amtInput.value = (currentTotal + parseFloat(price)).toFixed(2);
@@ -1123,309 +963,143 @@
             let orderId = document.getElementById('editOrderId').value;
             let finalAmount = document.getElementById('editFinalAmount').value;
             let btn = document.querySelector('#editOrderModal .btn:last-child');
-            btn.innerText = "Syncing Shopify...";
-            btn.disabled = true;
-            
+            btn.innerText = "Syncing Shopify..."; btn.disabled = true;
             try {
-                let additions = [];
-                let removals = [];
-                let returns = [];
-                
+                let additions = []; let removals = [];
                 currentEditOrderItems.forEach(item => {
-                    if(item.isNew && !item.removed && !item.returned) {
-                        additions.push({ variantId: item.variant_id, qty: item.quantity });
-                    }
-                    else if(!item.isNew && item.removed) {
-                        removals.push({ variantId: item.variant_id, quantity: 0 });
-                    }
-                    else if(!item.isNew && item.returned) {
-                        returns.push({
-                            variantId: item.variant_id,
-                            qty: item.quantity,
-                            restock: item.restock,
-                            lineItemId: item.line_item_id
-                        });
-                    }
+                    if(item.isNew && !item.removed) { additions.push({ variantId: item.variant_id, qty: item.quantity }); }
+                    else if(!item.isNew && item.removed) { removals.push({ variantId: item.variant_id, quantity: 0 }); }
                 });
-                
-                // Process additions and removals
                 if(additions.length > 0 || removals.length > 0) {
-                    let res = await fetch(`${SCRIPT_URL}?action=editShopifyOrder&orderId=${orderId}&additions=${JSON.stringify(additions)}&removals=${JSON.stringify(removals)}`);
-                    let data = await res.json();
-                    if(data.status === 'error') {
-                        showToast("Shopify Error: " + data.message);
-                        btn.innerText = "Save Changes (Sync Shopify)";
-                        btn.disabled = false;
-                        return;
-                    }
+                     let res = await fetch(`${SCRIPT_URL}?action=editShopifyOrder&orderId=${orderId}&additions=${JSON.stringify(additions)}&removals=${JSON.stringify(removals)}`);
+                     let data = await res.json();
+                     if(data.status === 'error') { showToast("Shopify Error: " + data.message); btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; return; }
                 }
-                
-                // Process returns
-                if(returns.length > 0) {
-                    let returnRes = await fetch(`${SCRIPT_URL}?action=returnOrder&orderId=${orderId}&returns=${JSON.stringify(returns)}`);
-                    let returnData = await returnRes.json();
-                    if(returnData.status === 'error') {
-                        showToast("Return Error: " + returnData.message);
-                        btn.innerText = "Save Changes (Sync Shopify)";
-                        btn.disabled = false;
-                        return;
-                    }
-                }
-                
-                // Update sheet amount
                 await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${orderId}&type=amount&value=${finalAmount}`);
-                
-                // Process restocking for removed items (not returns)
                 for(let item of currentEditOrderItems) {
-                    if(!item.isNew && item.removed && item.restock && !item.returned) {
+                    if(!item.isNew && item.removed && item.restock) {
                         await fetch(`${SCRIPT_URL}?action=restockItem&variantId=${item.variant_id}&qty=${item.quantity}`);
                     }
                 }
-                
-                showToast("Order Updated & Synced");
-                closeModal('editOrderModal');
-                applyFilters();
-            } catch(e) {
-                showToast("Connection Error: " + e.message);
-            } finally {
-                btn.innerText = "Save Changes (Sync Shopify)";
-                btn.disabled = false;
-            }
+                showToast("Order Updated & Synced"); closeModal('editOrderModal'); applyFilters();
+            } catch(e) { showToast("Connection Error: " + e.message); } 
+            finally { btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; }
         }
 
-        // --- Existing Functions (unchanged except for minor updates) ---
         function openAddModal(id, date, amount) {
-            document.getElementById('m_orderId').value = id;
-            document.getElementById('m_orderDate').value = date;
-            document.getElementById('m_amount').value = amount;
-            document.getElementById('cNumber').value = '';
-            document.getElementById('customerDetails').style.display = 'none';
+            document.getElementById('m_orderId').value = id; document.getElementById('m_orderDate').value = date;
+            document.getElementById('m_amount').value = amount; document.getElementById('cNumber').value = '';
+            document.getElementById('customerDetails').style.display = 'none'; 
             document.getElementById('numWarning').innerText = "";
             document.getElementById('cNumber').style.borderColor = "#babfc3";
             document.getElementById('addModal').style.display = 'flex';
         }
-
         function handleCustomerNumberInput(input) {
-            let val = input.value.replace(/[^0-9]/g, '');
-            if (val.startsWith('880')) val = val.substring(3);
-            if (val.length > 0 && !val.startsWith('0')) val = '0' + val;
-            input.value = val;
+            let val = input.value.replace(/[^0-9]/g, ''); if (val.startsWith('880')) val = val.substring(3);
+            if (val.length > 0 && !val.startsWith('0')) val = '0' + val; input.value = val;
             let warn = document.getElementById('numWarning');
-            if (val.length === 11) {
-                input.style.borderColor = 'green';
-                warn.innerText = "";
-            } else {
-                input.style.borderColor = 'red';
-                warn.innerText = "";
-            }
+            if (val.length === 11) { input.style.borderColor = 'green'; warn.innerText = ""; } else { input.style.borderColor = 'red'; warn.innerText = ""; }
         }
-
         async function checkCustomer() {
-            let num = document.getElementById('cNumber').value;
-            if(num.length !== 11) {
-                document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number";
-                return;
-            }
-            document.getElementById('numWarning').innerText = "";
-            
-            let btn = document.getElementById('btnCheck');
-            let originalText = btn.innerText;
-            btn.innerText = "Checking...";
-            try {
-                let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`);
-                let data = await res.json();
-                document.getElementById('customerDetails').style.display = 'block';
-                if(data.found) {
-                    document.getElementById('cName').value = data.name;
-                    document.getElementById('cAddress').value = data.address;
-                    isNewCustomer = false;
-                    document.getElementById('cName').readOnly = true;
-                    document.getElementById('cAddress').readOnly = true;
-                    document.getElementById('btnTriggerUpdate').style.display = 'block';
-                    document.getElementById('btnUpdateData').style.display = 'none';
-                } else {
-                    document.getElementById('cName').value = '';
-                    document.getElementById('cAddress').value = '';
-                    isNewCustomer = true;
-                    document.getElementById('cName').readOnly = false;
-                    document.getElementById('cAddress').readOnly = false;
-                    document.getElementById('btnTriggerUpdate').style.display = 'none';
-                    document.getElementById('btnUpdateData').style.display = 'none';
-                }
-            } finally {
-                btn.innerText = originalText;
-            }
+             let num = document.getElementById('cNumber').value; 
+             if(num.length !== 11) { 
+                 document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number";
+                 return; 
+             }
+             document.getElementById('numWarning').innerText = "";
+             
+             let btn = document.getElementById('btnCheck'); let originalText = btn.innerText; btn.innerText = "Checking...";
+             try {
+                 let res = await fetch(`${SCRIPT_URL}?action=checkCustomer&phone=${num}`); let data = await res.json();
+                 document.getElementById('customerDetails').style.display = 'block';
+                 if(data.found) {
+                     document.getElementById('cName').value = data.name; document.getElementById('cAddress').value = data.address;
+                     isNewCustomer = false; document.getElementById('cName').readOnly = true; document.getElementById('cAddress').readOnly = true;
+                     document.getElementById('btnTriggerUpdate').style.display = 'block'; document.getElementById('btnUpdateData').style.display = 'none';
+                 } else {
+                     document.getElementById('cName').value = ''; document.getElementById('cAddress').value = '';
+                     isNewCustomer = true; document.getElementById('cName').readOnly = false; document.getElementById('cAddress').readOnly = false;
+                     document.getElementById('btnTriggerUpdate').style.display = 'none'; document.getElementById('btnUpdateData').style.display = 'none';
+                 }
+             } finally { btn.innerText = originalText; }
         }
-
         function enableUpdateMode() {
-            document.getElementById('cName').readOnly = false;
-            document.getElementById('cAddress').readOnly = false;
-            document.getElementById('btnTriggerUpdate').style.display = 'none';
-            document.getElementById('btnUpdateData').style.display = 'inline-block';
+            document.getElementById('cName').readOnly = false; document.getElementById('cAddress').readOnly = false;
+            document.getElementById('btnTriggerUpdate').style.display = 'none'; document.getElementById('btnUpdateData').style.display = 'inline-block';
             document.getElementById('btnSave').style.display = 'none';
         }
-
         async function performCustomerUpdate() {
-            let btn = document.getElementById('btnUpdateData');
-            btn.innerText = "Updating...";
-            try {
-                let num = document.getElementById('cNumber').value;
-                let name = document.getElementById('cName').value;
-                let addr = document.getElementById('cAddress').value;
-                await fetch(`${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`);
-                showToast("Customer Data Updated");
-                document.getElementById('btnUpdateData').style.display = 'none';
-                document.getElementById('btnSave').style.display = 'inline-block';
-                document.getElementById('cName').readOnly = true;
-                document.getElementById('cAddress').readOnly = true;
-            } catch(e) {
-                showToast("Update Failed");
-            } finally {
-                btn.innerText = "Update Data";
-            }
+             let btn = document.getElementById('btnUpdateData'); btn.innerText = "Updating...";
+             try {
+                 let num = document.getElementById('cNumber').value; let name = document.getElementById('cName').value; let addr = document.getElementById('cAddress').value;
+                 await fetch(`${SCRIPT_URL}?action=updateCustomerOnly&cNumber=${num}&cName=${encodeURIComponent(name)}&cAddress=${encodeURIComponent(addr)}`);
+                 showToast("Customer Data Updated"); document.getElementById('btnUpdateData').style.display = 'none';
+                 document.getElementById('btnSave').style.display = 'inline-block'; document.getElementById('cName').readOnly = true; document.getElementById('cAddress').readOnly = true;
+             } catch(e) { showToast("Update Failed"); } finally { btn.innerText = "Update Data"; }
         }
-
         async function saveToSheet() {
-            let num = document.getElementById('cNumber').value;
-            if(num.length !== 11) {
-                document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number";
-                return;
-            }
-            let btn = document.getElementById('btnSave');
-            btn.innerText = "Saving...";
-            try {
-                let p = {
-                    action: 'saveOrder',
-                    oID: document.getElementById('m_orderId').value,
-                    oDate: document.getElementById('m_orderDate').value,
-                    oAmount: document.getElementById('m_amount').value,
-                    cNumber: num,
-                    cName: document.getElementById('cName').value,
-                    cAddress: document.getElementById('cAddress').value,
-                    isNewCustomer: isNewCustomer
-                };
-                await fetch(SCRIPT_URL + '?' + new URLSearchParams(p).toString());
-                showToast("Saved to List");
-                closeModal('addModal');
-                applyFilters();
-            } finally {
-                btn.innerText = "Save to List";
-            }
+             let num = document.getElementById('cNumber').value; if(num.length !== 11) { document.getElementById('numWarning').innerText = "Please enter a valid 11-digit number"; return; }
+             let btn = document.getElementById('btnSave'); btn.innerText = "Saving...";
+             try {
+                 let p = { action: 'saveOrder', oID: document.getElementById('m_orderId').value, oDate: document.getElementById('m_orderDate').value,
+                     oAmount: document.getElementById('m_amount').value, cNumber: num, cName: document.getElementById('cName').value,
+                     cAddress: document.getElementById('cAddress').value, isNewCustomer: isNewCustomer };
+                 await fetch(SCRIPT_URL + '?' + new URLSearchParams(p).toString()); showToast("Saved to List"); closeModal('addModal'); applyFilters();
+             } finally { btn.innerText = "Save to List"; }
         }
-
         function openStatusModal(id, cur) {
-            document.getElementById('statusOrderId').value = id;
-            document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
-            document.getElementById('chkProductEntry').checked = false;
-            document.getElementById('chkVoid').checked = false;
-            if(cur) {
-                let parts = cur.split(', ');
-                document.querySelectorAll('.st-chk').forEach(c => {
-                    if(parts.includes(c.value)) c.checked = true;
-                });
-            }
+            document.getElementById('statusOrderId').value = id; document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
+            document.getElementById('chkProductEntry').checked = false; document.getElementById('chkVoid').checked = false;
+            if(cur) { let parts = cur.split(', '); document.querySelectorAll('.st-chk').forEach(c => { if(parts.includes(c.value)) c.checked = true; }); }
             document.getElementById('statusModal').style.display = 'flex';
         }
-
         async function saveStatusUpdate() {
-            let id = document.getElementById('statusOrderId').value;
-            let statuses = [];
-            let updateBtn = document.getElementById('btnUpdateStatus');
-            updateBtn.innerText = "Processing...";
+            let id = document.getElementById('statusOrderId').value; let statuses = [];
+            let updateBtn = document.getElementById('btnUpdateStatus'); updateBtn.innerText = "Processing...";
             document.querySelectorAll('.st-chk:checked').forEach(c => statuses.push(c.value));
             try {
-                if(statuses.includes('Paid')) {
-                    let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`);
-                    let data = await res.json();
-                    if(data.status === 'error') {
-                        showToast(data.message);
-                        updateBtn.innerText = "Update";
-                        return;
-                    }
+                if(statuses.includes('Paid')) { 
+                    let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); let data = await res.json();
+                    if(data.status === 'error') { showToast(data.message); updateBtn.innerText = "Update"; return; }
                 }
-                if(document.getElementById('chkVoid').checked) {
-                    closeModal('statusModal');
-                    isVoiding = true;
-                    openNoteModal(id, '', false);
-                    return;
-                }
-                if(document.getElementById('chkProductEntry').checked) {
-                    closeModal('statusModal');
-                    pendingStatusUpdate = { id: id, statuses: statuses };
-                    openInvoiceModal(id, '');
-                    return;
-                }
-                if(statuses.length > 0) {
-                    await updateSheet(id, 'status', statuses.join(', '));
-                    closeModal('statusModal');
-                }
-            } catch(e) {
-                showToast("Connection Error");
-            } finally {
-                updateBtn.innerText = "Update";
-            }
+                if(document.getElementById('chkVoid').checked) { closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', false); return; }
+                if(document.getElementById('chkProductEntry').checked) { closeModal('statusModal'); pendingStatusUpdate = { id: id, statuses: statuses }; openInvoiceModal(id, ''); return; }
+                if(statuses.length > 0) { await updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
+            } catch(e) { showToast("Connection Error"); } finally { updateBtn.innerText = "Update"; }
         }
-
         function openNoteModal(id, note, isEdit = true) {
-            document.getElementById('noteOrderId').value = id;
-            document.getElementById('noteInput').value = note;
-            if(isVoiding) {
-                document.getElementById('noteTitle').innerText = "Reason for Voiding #" + id;
-                document.getElementById('btnSaveNote').innerText = "Void & Cancel";
-                document.getElementById('btnSaveNote').style.background = "#d82c0d";
-                document.getElementById('btnDeleteNote').style.display = 'none';
-            } else {
-                document.getElementById('noteTitle').innerText = "Update Note #" + id;
-                document.getElementById('btnSaveNote').innerText = "Save";
-                document.getElementById('btnSaveNote').style.background = "#0b6e4f";
-                document.getElementById('btnDeleteNote').style.display = 'block';
-            }
-            document.getElementById('noteModal').style.display = 'flex';
+             document.getElementById('noteOrderId').value = id; document.getElementById('noteInput').value = note;
+             if(isVoiding) {
+                 document.getElementById('noteTitle').innerText = "Reason for Voiding #" + id;
+                 document.getElementById('btnSaveNote').innerText = "Void & Cancel";
+                 document.getElementById('btnSaveNote').style.background = "#d82c0d"; document.getElementById('btnDeleteNote').style.display = 'none';
+             } else {
+                 document.getElementById('noteTitle').innerText = "Update Note #" + id;
+                 document.getElementById('btnSaveNote').innerText = "Save";
+                 document.getElementById('btnSaveNote').style.background = "#0b6e4f"; document.getElementById('btnDeleteNote').style.display = 'block';
+             }
+             document.getElementById('noteModal').style.display = 'flex';
         }
-
         async function saveNote() {
-            let btn = document.getElementById('btnSaveNote');
-            btn.innerText = "Saving...";
-            let id = document.getElementById('noteOrderId').value;
-            let note = document.getElementById('noteInput').value;
+            let btn = document.getElementById('btnSaveNote'); btn.innerText = "Saving...";
+            let id = document.getElementById('noteOrderId').value; let note = document.getElementById('noteInput').value;
             try {
                 if(isVoiding) {
-                    if(!note) {
-                        showToast("Reason required");
-                        return;
-                    }
+                    if(!note) { showToast("Reason required"); return; }
                     await fetch(`${SCRIPT_URL}?action=cancelShopifyOrder&orderId=${id}&note=${encodeURIComponent(note)}`);
-                    showToast("Order Cancelled & Voided");
-                    isVoiding = false;
-                } else {
-                    await updateSheet(id, 'note', note);
-                }
-                closeModal('noteModal');
-                applyFilters();
-            } finally {
-                btn.innerText = "Save";
-            }
+                    showToast("Order Cancelled & Voided"); isVoiding = false;
+                } else { await updateSheet(id, 'note', note); }
+                closeModal('noteModal'); applyFilters();
+            } finally { btn.innerText = "Save"; }
         }
-
         async function deleteNote() {
-            let btn = document.getElementById('btnDeleteNote');
-            btn.innerText = "Deleting...";
-            try {
-                let id = document.getElementById('noteOrderId').value;
-                await updateSheet(id, 'note', '');
-                closeModal('noteModal');
-                applyFilters();
-            } finally {
-                btn.innerText = "Delete";
-            }
+            let btn = document.getElementById('btnDeleteNote'); btn.innerText = "Deleting...";
+            try { let id = document.getElementById('noteOrderId').value; await updateSheet(id, 'note', ''); closeModal('noteModal'); applyFilters(); } finally { btn.innerText = "Delete"; }
         }
-
         function openInvoiceModal(id, val, isEdit = false) {
-            document.getElementById('invOrderId').value = id;
-            document.getElementById('invoiceInput').value = val || '';
-            isEditingInvoice = isEdit;
+            document.getElementById('invOrderId').value = id; document.getElementById('invoiceInput').value = val || ''; isEditingInvoice = isEdit;
             document.getElementById('invModalTitle').innerText = isEdit ? 'Edit Invoice' : 'Enter Invoice Number';
-            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none';
+            document.getElementById('btnDeleteInv').style.display = isEdit ? 'block' : 'none'; 
             
             let invInp = document.getElementById('invoiceInput');
             invInp.style.borderColor = '#babfc3';
@@ -1438,7 +1112,7 @@
             
             document.getElementById('invoiceModal').style.display = 'flex';
         }
-
+        
         function handleInvoiceInput(el) {
             let val = el.value.replace(/[^0-9]/g, '');
             el.value = val;
@@ -1453,210 +1127,99 @@
             }
         }
 
-        function deleteInvoice() {
-            openConfirmModal("Delete this invoice?", function() {
-                updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE');
-                closeModal('invoiceModal');
-            });
-        }
-
+        function deleteInvoice() { openConfirmModal("Delete this invoice?", function() { updateSheet(document.getElementById('invOrderId').value, 'invoice', 'DELETE'); closeModal('invoiceModal'); }); }
+        
         async function confirmInvoice() {
-            let btn = document.getElementById('btnSaveInvoice');
-            let id = document.getElementById('invOrderId').value;
-            let invInput = document.getElementById('invoiceInput');
-            let inv = invInput.value;
-            let warn = document.getElementById('invWarning');
+             let btn = document.getElementById('btnSaveInvoice'); 
+             let id = document.getElementById('invOrderId').value; 
+             let invInput = document.getElementById('invoiceInput');
+             let inv = invInput.value;
+             let warn = document.getElementById('invWarning');
 
-            if(inv.length !== 13) {
-                invInput.style.borderColor = 'red';
-                invInput.style.color = 'red';
-                warn.style.display = 'block';
-                return;
-            } else {
-                warn.style.display = 'none';
-            }
+             if(inv.length !== 13) {
+                 invInput.style.borderColor = 'red';
+                 invInput.style.color = 'red';
+                 warn.style.display = 'block'; 
+                 return; 
+             } else {
+                 warn.style.display = 'none';
+             }
 
-            btn.innerText = "Saving...";
-            try {
-                if(pendingStatusUpdate) {
-                    let s = pendingStatusUpdate.statuses.join(', ');
-                    if(s) s += ", ";
-                    s += "Product Entry";
-                    await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`);
-                    pendingStatusUpdate = null;
-                } else {
-                    await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`);
-                }
-                closeModal('invoiceModal');
-                applyFilters();
-            } finally {
-                btn.innerText = "Save";
-            }
+             btn.innerText = "Saving...";
+             try {
+                 if(pendingStatusUpdate) {
+                     let s = pendingStatusUpdate.statuses.join(', '); if(s) s += ", "; s += "Product Entry";
+                     await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=${encodeURIComponent(s)}&invoice=${inv}`); pendingStatusUpdate = null;
+                 } else { await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=invoice&value=${inv}`); }
+                 closeModal('invoiceModal'); applyFilters();
+             } finally { btn.innerText = "Save"; }
         }
-
-        function openConfirmModal(msg, callback) {
-            document.getElementById('confirmMessage').innerText = msg;
-            pendingConfirmAction = callback;
-            document.getElementById('confirmModal').style.display = 'flex';
-        }
-
-        document.getElementById('confirmBtnAction').onclick = function() {
-            if(pendingConfirmAction) pendingConfirmAction();
-            closeModal('confirmModal');
-        };
-
+        function openConfirmModal(msg, callback) { document.getElementById('confirmMessage').innerText = msg; pendingConfirmAction = callback; document.getElementById('confirmModal').style.display = 'flex'; }
+        document.getElementById('confirmBtnAction').onclick = function() { if(pendingConfirmAction) pendingConfirmAction(); closeModal('confirmModal'); };
         function openFulfillModal(id) {
-            document.getElementById('fOrderId').value = id;
-            document.getElementById('trackNum').value = '';
-            document.getElementById('trackLink').value = '';
-            document.getElementById('fulfillModal').style.display = 'flex';
+             document.getElementById('fOrderId').value = id; document.getElementById('trackNum').value = ''; document.getElementById('trackLink').value = ''; document.getElementById('fulfillModal').style.display = 'flex';
         }
-
         async function submitFulfillment() {
-            let id = document.getElementById('fOrderId').value;
-            let num = document.getElementById('trackNum').value;
-            let link = document.getElementById('trackLink').value;
-            if(!num) {
-                showToast("Tracking Num Required");
-                return;
-            }
-            document.getElementById('btnConfirmFulfill').innerText = "Processing...";
-            await fetch(`${SCRIPT_URL}?action=fulfillOrder&orderId=${id}&trackingNum=${num}&trackingUrl=${encodeURIComponent(link)}`);
-            showToast("Fulfilled");
-            document.getElementById('btnConfirmFulfill').innerText = "Confirm";
-            closeModal('fulfillModal');
-            applyFilters();
+             let id = document.getElementById('fOrderId').value; let num = document.getElementById('trackNum').value; let link = document.getElementById('trackLink').value;
+             if(!num) { showToast("Tracking Num Required"); return; }
+             document.getElementById('btnConfirmFulfill').innerText = "Processing...";
+             await fetch(`${SCRIPT_URL}?action=fulfillOrder&orderId=${id}&trackingNum=${num}&trackingUrl=${encodeURIComponent(link)}`);
+             showToast("Fulfilled"); document.getElementById('btnConfirmFulfill').innerText = "Confirm"; closeModal('fulfillModal'); applyFilters();
         }
-
-        async function updateSheet(id, type, val) {
-            await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=${type}&value=${encodeURIComponent(val)}`);
-            showToast("Updated");
-            applyFilters();
-        }
-
+        async function updateSheet(id, type, val) { await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=${type}&value=${encodeURIComponent(val)}`); showToast("Updated"); applyFilters(); }
         async function downloadExcel() {
-            let btn = document.querySelector('.btn-export');
-            btn.innerHTML = "Downloading...";
-            btn.disabled = true;
+            let btn = document.querySelector('.btn-export'); btn.innerHTML = "Downloading..."; btn.disabled = true;
             try {
-                let dFrom = document.getElementById('dateFrom').value;
-                let dTo = document.getElementById('dateTo').value;
-                let url = `${SCRIPT_URL}?action=getSheetOrders&export=true`;
-                if(dFrom && dTo) url += `&dateFrom=${dFrom}&dateTo=${dTo}`;
-                let res = await fetch(url);
-                let data = await res.json();
+                let dFrom = document.getElementById('dateFrom').value; let dTo = document.getElementById('dateTo').value;
+                let url = `${SCRIPT_URL}?action=getSheetOrders&export=true`; if(dFrom && dTo) url += `&dateFrom=${dFrom}&dateTo=${dTo}`;
+                let res = await fetch(url); let data = await res.json();
                 if (data.status === "success" && data.orders && data.orders.length > 0) {
                     let csvContent = "\uFEFFDate,Order ID,Name,Number,Address,Amount,Note,Status,Invoice\n";
                     data.orders.forEach(o => {
                         const escape = (val) => {
-                            if (val === null || val === undefined) return "";
-                            let str = String(val);
-                            if (str.includes(",") || str.includes("\"") || str.includes("\n")) return `"${str.replace(/"/g, '""')}"`;
-                            return str;
+                            if (val === null || val === undefined) return ""; let str = String(val);
+                            if (str.includes(",") || str.includes("\"") || str.includes("\n")) return `"${str.replace(/"/g, '""')}"`; return str;
                         };
                         csvContent += [escape(new Date(o.date).toLocaleDateString('en-GB')), escape(o.id), escape(o.name), escape("'" + (o.number || "")), escape(o.address), escape(o.amount), escape(o.note), escape(o.status), escape("'" + (o.invoice || ""))].join(",") + "\n";
                     });
-                    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    let link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = "Order_List_" + new Date().toISOString().slice(0,10) + ".csv";
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    showToast("Download started");
-                } else {
-                    showToast("No data to export");
-                }
-            } catch (e) {
-                showToast("Export failed");
-            } finally {
-                btn.innerHTML = "⬇️ Excel";
-                btn.disabled = false;
-            }
+                    let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); let link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "Order_List_" + new Date().toISOString().slice(0,10) + ".csv"; document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast("Download started");
+                } else { showToast("No data to export"); }
+            } catch (e) { showToast("Export failed"); } finally { btn.innerHTML = "⬇️ Excel"; btn.disabled = false; }
         }
-
         async function downloadImages(urls) {
-            showToast("Downloading " + urls.length + " images...");
-            for(let i=0; i<urls.length; i++) {
-                try {
-                    let response = await fetch(urls[i]);
-                    let blob = await response.blob();
-                    let blobUrl = window.URL.createObjectURL(blob);
-                    let a = document.createElement('a');
-                    a.href = blobUrl;
-                    a.download = `product-img-${i+1}.jpg`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(blobUrl);
-                } catch(e) {
-                    let a = document.createElement('a');
-                    a.href = urls[i];
-                    a.target="_blank";
-                    a.download = `img-${i+1}.jpg`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                }
-                await new Promise(r => setTimeout(r, 1000));
-            }
+             showToast("Downloading " + urls.length + " images...");
+             for(let i=0; i<urls.length; i++) {
+                 try {
+                     let response = await fetch(urls[i]); let blob = await response.blob(); let blobUrl = window.URL.createObjectURL(blob);
+                     let a = document.createElement('a'); a.href = blobUrl; a.download = `product-img-${i+1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); window.URL.revokeObjectURL(blobUrl);
+                 } catch(e) {
+                     let a = document.createElement('a'); a.href = urls[i]; a.target="_blank"; a.download = `img-${i+1}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                 } await new Promise(r => setTimeout(r, 1000));
+             }
         }
-
         function copyToClipboard(txt) {
-            const textarea = document.createElement("textarea");
-            textarea.value = txt;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand("copy");
-            document.body.removeChild(textarea);
-            showToast("Copied: " + txt + "");
+            const textarea = document.createElement("textarea"); textarea.value = txt; document.body.appendChild(textarea);
+            textarea.select(); document.execCommand("copy"); document.body.removeChild(textarea); showToast("Copied: " + txt + "");
         }
-
-        function showToast(msg) {
-            let x = document.getElementById("toast");
-            x.className = "show";
-            x.innerText = msg;
-            setTimeout(() => {
-                x.className = x.className.replace("show", "");
-            }, 3000);
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
-        }
-
+        function showToast(msg) { let x = document.getElementById("toast"); x.className = "show"; x.innerText = msg; setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         function openEditCustomerModal(id, name, phone, address) {
-            document.getElementById('ec_orderId').value = id;
-            document.getElementById('ec_name').value = name;
-            document.getElementById('ec_phone').value = phone;
-            document.getElementById('ec_address').value = address;
+            document.getElementById('ec_orderId').value = id; document.getElementById('ec_name').value = name;
+            document.getElementById('ec_phone').value = phone; document.getElementById('ec_address').value = address;
             document.getElementById('editCustomerModal').style.display = 'flex';
         }
-
         async function saveOrderCustomerDetails() {
-            let id = document.getElementById('ec_orderId').value;
-            let name = document.getElementById('ec_name').value;
-            let phone = document.getElementById('ec_phone').value;
-            let address = document.getElementById('ec_address').value;
-            let btn = document.querySelector('#editCustomerModal button');
-            btn.innerText = "Saving...";
+            let id = document.getElementById('ec_orderId').value; let name = document.getElementById('ec_name').value;
+            let phone = document.getElementById('ec_phone').value; let address = document.getElementById('ec_address').value;
+            let btn = document.querySelector('#editCustomerModal button'); btn.innerText = "Saving...";
             try {
                 let url = `${SCRIPT_URL}?action=updateOrderCustomer&oID=${id}&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}&address=${encodeURIComponent(address)}`;
-                let res = await fetch(url);
-                let data = await res.json();
-                if(data.status === 'success') {
-                    showToast("Customer info updated");
-                    closeModal('editCustomerModal');
-                    applyFilters();
-                } else {
-                    showToast("Error updating info");
-                }
-            } catch(e) {
-                showToast("Connection Error");
-            } finally {
-                btn.innerText = "Save Changes";
-            }
+                let res = await fetch(url); let data = await res.json();
+                if(data.status === 'success') { showToast("Customer info updated"); closeModal('editCustomerModal'); applyFilters(); } 
+                else { showToast("Error updating info"); }
+            } catch(e) { showToast("Connection Error"); } finally { btn.innerText = "Save Changes"; }
         }
     </script>
 </body>
 </html>
+
