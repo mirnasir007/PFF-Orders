@@ -133,7 +133,7 @@ function syncOrderToSheet(orderData) {
   var date = new Date(orderData.created_at).toISOString().slice(0, 10);
   var name = orderData.shipping_address ? orderData.shipping_address.first_name + " " + orderData.shipping_address.last_name : (orderData.customer ? orderData.customer.first_name + " " + orderData.customer.last_name : "No Name");
   var phone = orderData.shipping_address ? orderData.shipping_address.phone : (orderData.customer ? orderData.customer.phone : "");
-  var address = orderData.shipping_address ? orderData.shipping_address.address1 + " " + orderData.shipping_address.city : "";
+  var address = orderData.shipping_address ? [orderData.shipping_address.address1, orderData.shipping_address.address2, orderData.shipping_address.city].filter(Boolean).join(", ") : "";
   var amount = orderData.total_price;
   
   // Logic: Only add if not exists (for create webhook) or update financial status
