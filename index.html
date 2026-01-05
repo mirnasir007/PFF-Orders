@@ -698,7 +698,7 @@
                 
                 let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
                 let dateStr = new Date(order.created_at).toLocaleDateString('en-GB');
-                let displayAmount = isListed ? saved.amount : (order.current_total_price || order.total_price);
+                let displayAmount = (order.current_total_price) ? order.current_total_price : order.total_price;
 
                 let card = `
                 <div class="order-card">
@@ -1215,3 +1215,4 @@
     </script>
 </body>
 </html>
+
