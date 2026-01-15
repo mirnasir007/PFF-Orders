@@ -1,7 +1,7 @@
-var SHOP_DOMAIN = "xxx-xxxx-xxx.myshopify.com";
+var SHOP_DOMAIN = "pff-premium-store.myshopify.com";
 var ACCESS_TOKEN = "xxxxxxxxxxx"; // Recommend storing in Script Properties
 var SHEET_ID = "xxxxxxxxxxxx";
-var LOCATION_ID = "xxxxxxxx";
+var LOCATION_ID = "xxxxx";
 var API_VERSION = "2025-10"; // Use a stable version (2025-10 implies future/unstable)
 
 // ---------------------------------------------------------
@@ -111,38 +111,66 @@ function shopifyGraphQL(query, variables) {
 }
 
 // ---------------------------------------------------------
-// HELPER: SYNC WEBHOOK DATA TO SHEET
+// HELPER: SYNC WEBHOOK DATA TO SHEET (FINAL STABLE VERSION)
 // ---------------------------------------------------------
 function syncOrderToSheet(orderData) {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName("Orders");
-  var data = sheet.getDataRange().getValues();
-  
-  var orderId = String(orderData.order_number); // Using Order Number for ID in sheet
-  var rowIndex = -1;
-  
-  // Check if exists
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]) === orderId) {
-      rowIndex = i + 1;
-      break;
-    }
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000); // Wait up to 10 seconds to avoid collisions
+  } catch (e) {
+    console.error("Could not obtain lock after 10 seconds.");
+    return;
   }
 
-  // Format Data
-  var date = new Date(orderData.created_at).toISOString().slice(0, 10);
-  var name = orderData.shipping_address ? orderData.shipping_address.first_name + " " + orderData.shipping_address.last_name : (orderData.customer ? orderData.customer.first_name + " " + orderData.customer.last_name : "No Name");
-  var phone = orderData.shipping_address ? orderData.shipping_address.phone : (orderData.customer ? orderData.customer.phone : "");
-  var address = orderData.shipping_address ? [orderData.shipping_address.address1, orderData.shipping_address.address2, orderData.shipping_address.city].filter(Boolean).join(", ") : "";
-  var amount = orderData.total_price;
-  
-  // Logic: Only add if not exists (for create webhook) or update financial status
-  if (rowIndex === -1) {
-    // Append New
-    sheet.appendRow([date, "'" + orderId, name, "'" + phone, address, amount, "", "Pending", ""]);
-  } else {
-    // Update existing amount if changed (for update webhook)
-    sheet.getRange(rowIndex, 6).setValue(amount);
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName("Orders");
+    var data = sheet.getDataRange().getValues();
+    
+    var orderId = String(orderData.order_number);
+    var rowIndex = -1;
+
+    // Check if order already exists
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][1]).replace(/'/g, "") === orderId) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+
+    // Format Data
+    var date = new Date(orderData.created_at).toISOString().slice(0, 10);
+    
+    var name = orderData.shipping_address ? 
+      (orderData.shipping_address.first_name + " " + orderData.shipping_address.last_name) : 
+      (orderData.customer ? orderData.customer.first_name + " " + orderData.customer.last_name : "No Name");
+      
+    var phone = String((orderData.shipping_address ? orderData.shipping_address.phone : (orderData.customer ? orderData.customer.phone : "")) || "")
+      .replace(/[^0-9]/g, "")
+      .replace(/^88/, "");
+      
+    var address = orderData.shipping_address ? 
+      [orderData.shipping_address.address1, orderData.shipping_address.address2, orderData.shipping_address.city].filter(Boolean).join(", ") : "";
+    
+    // PRICE LOGIC: Prioritize current_total_price to capture edits/removals correctly
+    var amount = orderData.total_price;
+    if (orderData.current_total_price !== undefined && orderData.current_total_price !== null) {
+       amount = orderData.current_total_price;
+    }
+
+    if (rowIndex === -1) {
+      // Append New Order
+      sheet.appendRow([date, "'" + orderId, name, "'" + phone, address, amount, "", "Pending", ""]);
+      SpreadsheetApp.flush();
+    } else {
+      // Update Existing Order Amount
+      sheet.getRange(rowIndex, 6).setValue(amount);
+      SpreadsheetApp.flush();
+    }
+  } catch (err) {
+    console.error("Sync Error: " + err.toString());
+  } finally {
+    lock.releaseLock();
   }
 }
 
