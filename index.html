@@ -53,7 +53,7 @@
         .order-id { font-weight: 700; font-size: 16px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
         .order-date { font-size: 12px; color: #6d7175; }
         .customer-details-box { display: flex; flex-direction: column; font-size: 13px; color: #333; line-height: 1.4; border-left: 2px solid #eee; padding-left: 10px; }
-        .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+        .cust-name-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; flex-wrap: wrap; }
         .copy-icon { cursor: pointer; font-size: 14px; color: #555; transition: 0.2s; padding: 2px; border-radius: 3px; }
         .copy-icon:hover { background: #eee; color: #000; }
         .cust-phone { color: #555; font-family: monospace; font-size: 13px; font-weight: 600; margin-top: 2px; }
@@ -155,6 +155,59 @@
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
         
+        /* NEW POPOVER STYLES FOR CHECK CUSTOMER */
+        .courier-wrapper { position: relative; display: inline-block; margin-left: 10px; }
+        .btn-check-cust { background: white; border: 1px solid #babfc3; color: #333; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; height: 22px; transition: 0.2s; }
+        .btn-check-cust:hover { background: #f1f1f1; border-color: #999; }
+        
+        /* The Floating Popover */
+        .courier-popover {
+            display: none;
+            position: absolute;
+            top: 28px;
+            left: 0;
+            width: 260px;
+            background: white;
+            border: 1px solid #e1e3e5;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            z-index: 50;
+            padding: 12px;
+            animation: popIn 0.2s ease;
+        }
+        .courier-popover.active { display: block; }
+        @keyframes popIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }
+        
+        /* Arrow on top */
+        .courier-popover::before {
+            content: "";
+            position: absolute;
+            top: -6px;
+            left: 12px;
+            width: 10px;
+            height: 10px;
+            background: white;
+            transform: rotate(45deg);
+            border-top: 1px solid #e1e3e5;
+            border-left: 1px solid #e1e3e5;
+        }
+
+        .popover-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px; }
+        .popover-title { font-weight: 700; font-size: 12px; color: #008060; }
+        .popover-close { cursor: pointer; color: #999; font-size: 16px; line-height: 1; }
+        .popover-close:hover { color: #d82c0d; }
+
+        /* Dashboard Grid inside Popover */
+        .popover-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .p-stat-box { background: #f9f9f9; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #eee; }
+        .p-stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .p-stat-val { font-size: 14px; font-weight: 700; color: #333; }
+        .p-rating-box { grid-column: 1 / -1; background: #fff8e1; border-color: #ffe082; display:flex; justify-content:center; align-items:center; gap:5px; }
+        .p-rating-val { color: #f57f17; }
+        
+        .loading-spinner { border: 2px solid #f3f3f3; border-top: 2px solid #008060; border-radius: 50%; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 5px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         @media screen and (max-width: 768px) {
             body { overflow: auto; }
             .zoom-container { zoom: 1; flex-direction: column; }
@@ -179,6 +232,10 @@
             
             .inventory-drawer { width: 85%; right: -90%; }
             .inventory-drawer.open { right: 0; }
+            
+            .btn-check-cust { margin-left: 0; margin-top: 5px; width: 100%; }
+            .courier-wrapper { width: 100%; margin-left: 0; }
+            .courier-popover { width: 100%; left: 0; box-sizing: border-box; } 
         }
     </style>
 </head>
@@ -401,6 +458,10 @@
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEf-503JgVRQGLSaFFz8CHjSbJlmTX-UNnyjUiS6yyjk-JGqavucbmnnc_do9C69rb/exec"; 
         
+        // --- COURIER CHECKER API URL (Retrieved from your file) ---
+        const COURIER_API_URL = "https://script.google.com/macros/s/AKfycbzC2erjEesZ0iNytdujMJRXy9IVwbzwb9iOLMMWoN30Tgmo6jkqMEo8JXtdf1KX6jaN/exec"; 
+        // -------------------------------------------------------------------
+
         let nextPageCursor = "", prevPageCursor = "";
         let isNewCustomer = false, pendingStatusUpdate = null, isVoiding = false;
         let currentPreviewImages = [], currentPreviewIndex = 0;
@@ -416,6 +477,9 @@
         let pointX = 0, pointY = 0;
         let startX = 0, startY = 0;
         let panning = false;
+
+        // --- NEW: Global variable for Popover Singleton ---
+        let currentOpenPopoverId = null;
 
         window.onload = function() {
             applyFilters();
@@ -662,12 +726,19 @@
                 if (isListed) {
                     let fullCopyPayload = `#${id} ${saved.name}\n\n${copyProductString}`;
                     let safeCopyPayload = fullCopyPayload.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+                    
+                    // Added Check Customer Button and WRAPPER
                     custHtml = `
                     <div class="customer-details-box">
                         <div class="cust-name-row">
                             <span>${saved.name}</span>
                             <span class="edit-icon" title="Edit Customer Details" onclick="openEditCustomerModal('${id}', '${saved.name.replace(/'/g, "\\'")}', '${saved.phone}', '${saved.address.replace(/\n/g, '\\n').replace(/'/g, "\\'")}')">✎</span>
                             <span class="copy-icon" onclick="copyToClipboard('${safeCopyPayload}')" title="Copy Details">📋</span>
+                            
+                            <span class="courier-wrapper">
+                                <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Check Customer</button>
+                                <div id="courier-res-${id}" class="courier-popover"></div>
+                            </span>
                         </div>
                         <div class="cust-phone">${saved.phone}</div>
                         <div class="cust-addr" title="${saved.address}">${saved.address}</div>
@@ -723,6 +794,128 @@
                 </div>`;
                 container.innerHTML += card;
             });
+        }
+        
+        // --- UPDATED: Close Popover Function ---
+        function closeCourierPopup(id) {
+             const el = document.getElementById('courier-res-' + id);
+             if(el) {
+                 el.classList.remove('active');
+                 // Optional: Clear content to save memory or keep it? Keeping it is better for UX if reopened
+             }
+             if (currentOpenPopoverId === id) {
+                 currentOpenPopoverId = null;
+             }
+        }
+
+        // --- UPDATED: Check Courier Details with Popover Logic ---
+        async function checkCourierDetails(btn, phone, resId, orderId) {
+            if(!phone) { showToast("No phone number found"); return; }
+            if(!COURIER_API_URL || COURIER_API_URL.includes("YOUR_COURIER_WEB_APP_URL_HERE")) {
+                 showToast("Please configure the API URL in the code"); return;
+            }
+
+            // 1. SINGLETON: Close existing popup if different
+            if (currentOpenPopoverId && currentOpenPopoverId !== orderId) {
+                closeCourierPopup(currentOpenPopoverId);
+            }
+
+            const container = document.getElementById(resId);
+            
+            // 2. TOGGLE: If same button clicked, close it
+            if (container.classList.contains('active')) {
+                closeCourierPopup(orderId);
+                return;
+            }
+
+            // 3. OPEN NEW
+            currentOpenPopoverId = orderId;
+            container.classList.add('active');
+            
+            // Show Loading Spinner inside Popover
+            container.innerHTML = `
+                <div class="popover-header">
+                    <div class="popover-title">Checking...</div>
+                    <div class="popover-close" onclick="closeCourierPopup('${orderId}')">&times;</div>
+                </div>
+                <div style="text-align:center; padding:15px; font-size:12px; color:#666;">
+                    <div class="loading-spinner"></div> Fetching data...
+                </div>
+            `;
+
+            try {
+                // Fetch from the new external Web App
+                const res = await fetch(`${COURIER_API_URL}?phone=${encodeURIComponent(phone)}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const rootData = data.raw.data || {};
+                    const customerData = rootData.customer || {};
+                    
+                    const total = customerData.total_delivery || 0;       
+                    const delivered = customerData.successful_delivery || 0;
+                    let returned = total - delivered;
+                    if (returned < 0) returned = 0;
+                    
+                    let ratingText = rootData.customer_rating || "New";
+                    // Format text
+                    ratingText = ratingText.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                    let ratingColor = '#f57f17'; // Yellow default
+                    let ratingBg = '#fff8e1';
+                    if (returned > delivered) {
+                         ratingColor = '#b71c1c'; ratingBg = '#ffebee';
+                    } else if (delivered > 0) {
+                         ratingColor = '#1b5e20'; ratingBg = '#e8f5e9';
+                    }
+
+                    // Render Mini Dashboard Grid
+                    let html = `
+                    <div class="popover-header">
+                        <div class="popover-title">Customer History</div>
+                        <div class="popover-close" onclick="closeCourierPopup('${orderId}')">&times;</div>
+                    </div>
+                    <div class="popover-grid">
+                        <div class="p-stat-box">
+                            <div class="p-stat-label">Processed</div>
+                            <div class="p-stat-val" style="color:#0d47a1;">${total}</div>
+                        </div>
+                        <div class="p-stat-box">
+                            <div class="p-stat-label">Delivered</div>
+                            <div class="p-stat-val" style="color:#1b5e20;">${delivered}</div>
+                        </div>
+                        <div class="p-stat-box">
+                            <div class="p-stat-label">Returned</div>
+                            <div class="p-stat-val" style="color:#b71c1c;">${returned}</div>
+                        </div>
+                        <div class="p-stat-box p-rating-box" style="background:${ratingBg}; border-color:${ratingColor}30;">
+                             <span style="font-size:12px;">⭐</span> <span class="p-stat-val" style="color:${ratingColor}; font-size:12px;">${ratingText}</span>
+                        </div>
+                    </div>`;
+                    
+                    container.innerHTML = html;
+                } else {
+                     container.innerHTML = `
+                        <div class="popover-header">
+                            <div class="popover-title">Result</div>
+                            <div class="popover-close" onclick="closeCourierPopup('${orderId}')">&times;</div>
+                        </div>
+                        <div style="text-align:center; padding:10px; font-size:12px; color:#d82c0d;">
+                            No data found for this number.
+                        </div>`;
+                }
+                
+            } catch(e) {
+                showToast("Failed to fetch info");
+                container.innerHTML = `
+                    <div class="popover-header">
+                        <div class="popover-title">Error</div>
+                        <div class="popover-close" onclick="closeCourierPopup('${orderId}')">&times;</div>
+                    </div>
+                    <div style="text-align:center; padding:10px; font-size:12px; color:red;">
+                        Connection Error.
+                    </div>`;
+            }
         }
 
         // --- PREVIEW FUNCTIONS ---
@@ -1215,4 +1408,3 @@
     </script>
 </body>
 </html>
-
