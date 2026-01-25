@@ -155,7 +155,7 @@
         @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
         @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
         
-        /* NEW POPOVER STYLES FOR CHECK CUSTOMER */
+        /* NEW POPOVER STYLES FOR Pathao Check */
         .courier-wrapper { position: relative; display: inline-block; margin-left: 10px; }
         .btn-check-cust { background: white; border: 1px solid #babfc3; color: #333; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; height: 22px; transition: 0.2s; }
         .btn-check-cust:hover { background: #f1f1f1; border-color: #999; }
@@ -727,7 +727,7 @@
                     let fullCopyPayload = `#${id} ${saved.name}\n\n${copyProductString}`;
                     let safeCopyPayload = fullCopyPayload.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
                     
-                    // Added Check Customer Button and WRAPPER
+                    // Added Pathao Check Button and WRAPPER
                     custHtml = `
                     <div class="customer-details-box">
                         <div class="cust-name-row">
@@ -736,7 +736,7 @@
                             <span class="copy-icon" onclick="copyToClipboard('${safeCopyPayload}')" title="Copy Details">📋</span>
                             
                             <span class="courier-wrapper">
-                                <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Check Customer</button>
+                                <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Pathao Check</button>
                                 <div id="courier-res-${id}" class="courier-popover"></div>
                             </span>
                         </div>
@@ -1408,3 +1408,4 @@
     </script>
 </body>
 </html>
+
