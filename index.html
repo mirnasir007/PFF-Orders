@@ -28,6 +28,17 @@
         .input-group { display: flex; align-items: center; gap: 5px; }
         input, select { padding: 8px 12px; border: 1px solid #babfc3; border-radius: 4px; font-size: 14px; outline: none; }
         input:focus { border-color: var(--primary); }
+        
+        /* Remove arrows from number input */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+          -webkit-appearance: none; 
+          margin: 0; 
+        }
+        input[type=number] {
+          -moz-appearance: textfield;
+        }
+
         .btn { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; }
         .btn:hover { background: #006e52; }
         .btn-secondary { background: #fff; border: 1px solid #babfc3; color: #333; }
@@ -392,8 +403,14 @@
     <div id="fulfillModal" class="modal">
         <div class="modal-box">
             <span class="modal-close" onclick="closeModal('fulfillModal')">&times;</span>
-            <h3>Fulfill Order</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
+               <h3 style="margin:0;">Fulfill Order</h3>
+               <input type="text" id="consignmentInput" placeholder="Paste Consignment ID" style="padding:6px; font-size:12px; width:140px; border:1px solid #babfc3; border-radius:4px; margin-right:30px;" oninput="autoFillPathao()">
+            </div>
+            
             <input type="hidden" id="fOrderId">
+            <input type="hidden" id="fOrderPhone">
+            
             <div class="form-group"><label>Tracking Number</label><input type="text" id="trackNum"></div>
             <div class="form-group"><label>Tracking Link</label><input type="text" id="trackLink"></div>
             <div style="text-align:right; margin-top:15px;">
@@ -407,7 +424,7 @@
              <span class="modal-close" onclick="closeModal('noteModal')">&times;</span>
              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
                 <h3 id="noteTitle" style="margin:0; font-size:18px; color: #008060;">Update Note</h3>
-                <div id="paymentControls" style="display:none; gap:5px; align-items:center;">
+                <div id="paymentControls" style="display:none; gap:5px; align-items:center; margin-right: 25px;">
                      <select id="payType" onchange="calcPaymentNote()" style="height:30px; border:1px solid #ccc; border-radius:4px; font-size:11px;">
                          <option value="">Payment Type</option>
                          <option value="Bkash">Bkash</option>
@@ -782,7 +799,8 @@
                 if (isListed && saved.status) {
                     let sLower = saved.status.toLowerCase();
                     if (sLower.includes('product entry') && !sLower.includes('courier')) {
-                        extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}')">Fulfill</button>`;
+                        // UPDATED: Pass phone number to Fulfill Modal
+                        extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}', '${saved.phone}')">Fulfill</button>`;
                     }
                 }
                 
@@ -1393,9 +1411,32 @@
         }
         function openConfirmModal(msg, callback) { document.getElementById('confirmMessage').innerText = msg; pendingConfirmAction = callback; document.getElementById('confirmModal').style.display = 'flex'; }
         document.getElementById('confirmBtnAction').onclick = function() { if(pendingConfirmAction) pendingConfirmAction(); closeModal('confirmModal'); };
-        function openFulfillModal(id) {
-             document.getElementById('fOrderId').value = id; document.getElementById('trackNum').value = ''; document.getElementById('trackLink').value = ''; document.getElementById('fulfillModal').style.display = 'flex';
+        
+        // --- UPDATED: Open Fulfill Modal ---
+        function openFulfillModal(id, phone) {
+             document.getElementById('fOrderId').value = id; 
+             document.getElementById('fOrderPhone').value = phone || ""; // Store phone
+             document.getElementById('trackNum').value = ''; 
+             document.getElementById('trackLink').value = ''; 
+             document.getElementById('consignmentInput').value = ''; // Reset consignment input
+             document.getElementById('fulfillModal').style.display = 'flex';
         }
+
+        // --- NEW: Auto-fill Pathao Link Logic ---
+        function autoFillPathao() {
+             let conId = document.getElementById('consignmentInput').value.trim();
+             let phone = document.getElementById('fOrderPhone').value.trim();
+             
+             if(conId) {
+                 document.getElementById('trackNum').value = conId;
+                 let link = "https://merchant.pathao.com/tracking?consignment_id=" + conId + "&phone=" + phone;
+                 document.getElementById('trackLink').value = link;
+             } else {
+                 document.getElementById('trackNum').value = "";
+                 document.getElementById('trackLink').value = "";
+             }
+        }
+
         async function submitFulfillment() {
              let id = document.getElementById('fOrderId').value; let num = document.getElementById('trackNum').value; let link = document.getElementById('trackLink').value;
              if(!num) { showToast("Tracking Num Required"); return; }
