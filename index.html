@@ -405,8 +405,20 @@
     <div id="noteModal" class="modal">
         <div class="modal-box">
              <span class="modal-close" onclick="closeModal('noteModal')">&times;</span>
-             <h3 id="noteTitle">Update Note</h3>
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <h3 id="noteTitle" style="margin:0; font-size:18px; color: #008060;">Update Note</h3>
+                <div id="paymentControls" style="display:none; gap:5px; align-items:center;">
+                     <select id="payType" onchange="calcPaymentNote()" style="height:30px; border:1px solid #ccc; border-radius:4px; font-size:11px;">
+                         <option value="">Payment Type</option>
+                         <option value="Bkash">Bkash</option>
+                         <option value="City Bank">City Bank</option>
+                     </select>
+                     <input type="number" id="payAmount" placeholder="Amount" onkeyup="calcPaymentNote()" style="height:30px; width:70px; padding:0 5px; border:1px solid #ccc; border-radius:4px; font-size:12px;">
+                </div>
+            </div>
+             
              <input type="hidden" id="noteOrderId">
+             <input type="hidden" id="noteTotalAmount">
              <textarea id="noteInput" rows="4"></textarea>
              <div class="modal-footer">
                  <button class="btn-custom btn-delete" id="btnDeleteNote" onclick="deleteNote()">Delete</button>
@@ -458,7 +470,7 @@
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEf-503JgVRQGLSaFFz8CHjSbJlmTX-UNnyjUiS6yyjk-JGqavucbmnnc_do9C69rb/exec"; 
         
-        // --- COURIER CHECKER API URL (Retrieved from your file) ---
+        // --- COURIER CHECKER API URL ---
         const COURIER_API_URL = "https://script.google.com/macros/s/AKfycbzC2erjEesZ0iNytdujMJRXy9IVwbzwb9iOLMMWoN30Tgmo6jkqMEo8JXtdf1KX6jaN/exec"; 
         // -------------------------------------------------------------------
 
@@ -478,7 +490,7 @@
         let startX = 0, startY = 0;
         let panning = false;
 
-        // --- NEW: Global variable for Popover Singleton ---
+        // --- Global variable for Popover Singleton ---
         let currentOpenPopoverId = null;
 
         window.onload = function() {
@@ -618,6 +630,12 @@
                 let isListed = !!saved;
                 let statusBadge = '';
                 let isOrderVoid = false;
+                
+                // Determine Amount (Saved or Shopify)
+                let displayAmount = (order.current_total_price) ? order.current_total_price : order.total_price;
+                let finalAmount = isListed && saved.amount ? saved.amount : displayAmount;
+                // Clean amount for passing
+                let safeAmount = String(finalAmount).replace(/[^0-9.]/g, '');
 
                 if (isListed) {
                     let s = saved.status || "Pending";
@@ -719,7 +737,8 @@
                 let noteBtn = '';
                 if(isListed) {
                     let btnText = saved.note ? 'Edit Note' : 'Add Note';
-                    noteBtn = `<button class="btn-outline" style="margin-top:5px;" onclick="openNoteModal('${id}', decodeURIComponent('${encodeURIComponent(saved.note || '')}'))">${btnText}</button>`;
+                    // UPDATED: Pass safeAmount to openNoteModal
+                    noteBtn = `<button class="btn-outline" style="margin-top:5px;" onclick="openNoteModal('${id}', decodeURIComponent('${encodeURIComponent(saved.note || '')}'), '${safeAmount}')">${btnText}</button>`;
                 }
 
                 let custHtml = '';
@@ -742,7 +761,7 @@
                         </div>
                         <div class="cust-phone">${saved.phone}</div>
                         <div class="cust-addr" title="${saved.address}">${saved.address}</div>
-                        ${saved.note ? `<div class="saved-note" onclick="openNoteModal('${id}', decodeURIComponent('${encodeURIComponent(saved.note)}'))" title="Click to Edit">Note: ${saved.note}</div>` : ''}
+                        ${saved.note ? `<div class="saved-note" onclick="openNoteModal('${id}', decodeURIComponent('${encodeURIComponent(saved.note)}'), '${safeAmount}')" title="Click to Edit">Note: ${saved.note}</div>` : ''}
                     </div>`;
                 }
 
@@ -769,7 +788,6 @@
                 
                 let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
                 let dateStr = new Date(order.created_at).toLocaleDateString('en-GB');
-                let displayAmount = (order.current_total_price) ? order.current_total_price : order.total_price;
 
                 let card = `
                 <div class="order-card">
@@ -1248,24 +1266,57 @@
                     let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); let data = await res.json();
                     if(data.status === 'error') { showToast(data.message); updateBtn.innerText = "Update"; return; }
                 }
-                if(document.getElementById('chkVoid').checked) { closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', false); return; }
+                if(document.getElementById('chkVoid').checked) { closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', 0, false); return; }
                 if(document.getElementById('chkProductEntry').checked) { closeModal('statusModal'); pendingStatusUpdate = { id: id, statuses: statuses }; openInvoiceModal(id, ''); return; }
                 if(statuses.length > 0) { await updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
             } catch(e) { showToast("Connection Error"); } finally { updateBtn.innerText = "Update"; }
         }
-        function openNoteModal(id, note, isEdit = true) {
-             document.getElementById('noteOrderId').value = id; document.getElementById('noteInput').value = note;
+        
+        // --- UPDATED: Open Note Modal with Payment Logic ---
+        function openNoteModal(id, note, amount, isEdit = true) {
+             document.getElementById('noteOrderId').value = id; 
+             document.getElementById('noteInput').value = note;
+             
+             // Prepare Payment logic
+             let amt = 0;
+             if(amount) amt = parseFloat(String(amount).replace(/[^0-9.]/g, ''));
+             document.getElementById('noteTotalAmount').value = amt;
+             
+             // Reset Inputs
+             document.getElementById('payType').value = "";
+             document.getElementById('payAmount').value = "";
+
              if(isVoiding) {
                  document.getElementById('noteTitle').innerText = "Reason for Voiding #" + id;
                  document.getElementById('btnSaveNote').innerText = "Void & Cancel";
-                 document.getElementById('btnSaveNote').style.background = "#d82c0d"; document.getElementById('btnDeleteNote').style.display = 'none';
+                 document.getElementById('btnSaveNote').style.background = "#d82c0d"; 
+                 document.getElementById('btnDeleteNote').style.display = 'none';
+                 // Hide payment controls in Void mode
+                 document.getElementById('paymentControls').style.display = 'none';
              } else {
                  document.getElementById('noteTitle').innerText = "Update Note #" + id;
                  document.getElementById('btnSaveNote').innerText = "Save";
-                 document.getElementById('btnSaveNote').style.background = "#0b6e4f"; document.getElementById('btnDeleteNote').style.display = 'block';
+                 document.getElementById('btnSaveNote').style.background = "#0b6e4f"; 
+                 document.getElementById('btnDeleteNote').style.display = 'block';
+                 // Show payment controls in Edit mode
+                 document.getElementById('paymentControls').style.display = 'flex';
              }
              document.getElementById('noteModal').style.display = 'flex';
         }
+
+        // --- NEW: Calculate Payment Note ---
+        function calcPaymentNote() {
+            let type = document.getElementById('payType').value;
+            let rec = parseFloat(document.getElementById('payAmount').value);
+            let total = parseFloat(document.getElementById('noteTotalAmount').value);
+            
+            if(type && !isNaN(rec) && !isNaN(total)) {
+                let cod = total - rec;
+                let str = type + " Received " + rec + " COD " + cod;
+                document.getElementById('noteInput').value = str;
+            }
+        }
+
         async function saveNote() {
             let btn = document.getElementById('btnSaveNote'); btn.innerText = "Saving...";
             let id = document.getElementById('noteOrderId').value; let note = document.getElementById('noteInput').value;
@@ -1408,4 +1459,3 @@
     </script>
 </body>
 </html>
-
