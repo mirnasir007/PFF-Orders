@@ -588,11 +588,25 @@
         }
 
         async function applyFilters(cursor = "") {
-            showLoading();
             let status = document.getElementById('statusFilter').value;
             let sid = document.getElementById('searchId').value;
             let dFrom = document.getElementById('dateFrom').value;
             let dTo = document.getElementById('dateTo').value;
+
+            // Smart Caching: instantly load previous data if no search filter is active
+            let cacheKey = "cached_orders_data";
+            if (!sid && !dFrom && !dTo && status === 'any' && !cursor) {
+                let cachedData = sessionStorage.getItem(cacheKey);
+                if (cachedData) {
+                    let parsed = JSON.parse(cachedData);
+                    renderNewOrders(parsed.orders, parsed.images, parsed.savedDetails);
+                    if(parsed.entryAmount !== undefined) document.getElementById('entryAmountDisplay').innerText = "Entry Amount: " + parsed.entryAmount.toLocaleString();
+                } else {
+                    showLoading(); // Show loading only if no cache
+                }
+            } else {
+                showLoading();
+            }
 
             let url = SCRIPT_URL + `?action=getOrders&status=${encodeURIComponent(status)}`;
             if(sid) url += `&search=${encodeURIComponent(sid)}`;
@@ -604,6 +618,11 @@
                 let res = await fetch(url);
                 let data = await res.json();
                 hideLoading();
+                
+                // Save to cache for next quick load
+                if (!sid && !dFrom && !dTo && status === 'any' && !cursor) {
+                    sessionStorage.setItem(cacheKey, JSON.stringify(data));
+                }
 
                 if(data.entryAmount !== undefined) {
                      document.getElementById('entryAmountDisplay').innerText = "Entry Amount: " + data.entryAmount.toLocaleString();
@@ -722,6 +741,9 @@
                                  img = imgData; 
                              }
                          }
+                         
+                         // Thumbnail Trick: Replace original image with Shopify's small version for fast loading
+                         let smallImg = img.replace(/\.(png|jpg|jpeg|gif)(\?.*)?$/i, '_small.$1$2');
 
                          let isRemoved = (item.quantity === 0 || (item.fulfillable_quantity === 0 && !item.fulfillment_status));
                          if(isOrderVoid) isRemoved = true; 
@@ -734,7 +756,7 @@
                          productHtml += `
                          <div class="p-item ${isRemoved?'removed':''}">
                             ${isRemoved ? '<div class="removed-badge">REMOVED</div>' : ''}
-                            <img src="${img}" class="p-img" ${clickEvent}>
+                            <img src="${smallImg}" loading="lazy" class="p-img" ${clickEvent}>
                             <div style="font-weight:600;margin-top:3px;">${item.quantity}x</div>
                             <div class="variant-text">${item.variant_title || ''}</div>
                             ${pType ? `<div style="font-size:9px; color:#555; margin-top:2px;">${pType}</div>` : ''}
@@ -805,7 +827,10 @@
                 }
                 
                 let editBtn = isListed ? `<span class="btn-edit-order" onclick="openEditModal('${id}', ${saved.amount}, ${isOrderVoid})">Edit</span>` : '';
-                let dateStr = new Date(order.created_at).toLocaleDateString('en-GB');
+                
+                // Show Date & Time Formatting
+                let dObj = new Date(order.created_at);
+                let dateStr = dObj.toLocaleDateString('en-GB') + ' <br><span style="font-size:10px; color:#999; font-weight: 500;">' + dObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) + '</span>';
 
                 let card = `
                 <div class="order-card">
