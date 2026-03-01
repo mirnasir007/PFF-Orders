@@ -262,7 +262,7 @@
                 
                 <div style="font-size: 20px; font-weight: 700; color: #008060; margin-right: 15px; white-space: nowrap;">📦 Orders</div>
                 
-                <input type="text" id="searchId" placeholder="Order ID / Name / Phone" style="width: 200px;" oninput="debounceSearch()">
+                <div style="display: flex; gap: 5px; align-items: center;">     <input type="text" id="searchId" placeholder="Order ID / Name / Phone" style="width: 200px;"             onkeypress="if(event.key === 'Enter') applyFilters()"             oninput="if(this.value.trim() === '') applyFilters()">     <button class="btn" onclick="applyFilters()">Search</button> </div>
                 <div class="filter-options" id="filterOptions">
                     <select id="statusFilter">
                         <option value="any" selected>Any Status</option>
@@ -1500,3 +1500,4 @@
     </script>
 </body>
 </html>
+
