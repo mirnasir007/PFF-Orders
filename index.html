@@ -529,6 +529,44 @@
                     if(e.key === 'Escape') closeModal('imgPreview');
                 }
             });
+            // Block All Sources Code
+            // Block Right-Click (Context Menu)
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // Block Keyboard Shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Block F12 (DevTools)
+        if (e.key === 'F12') {
+            e.preventDefault();
+        }
+        // Block Ctrl + Shift + I (Inspect Element)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+            e.preventDefault();
+        }
+        // Block Ctrl + Shift + J (Console)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+            e.preventDefault();
+        }
+        // Block Ctrl + Shift + C (Inspect Element)
+        if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+        }
+        // Block Ctrl + U (View Page Source)
+        if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+            e.preventDefault();
+        }
+        // Block Ctrl + S (Save Page)
+        if (e.ctrlKey && (e.key === 'S' || e.key === 's')) {
+            e.preventDefault();
+        }
+    });
+
+    // Debugger Loop (Freezes DevTools if opened via browser menu)
+    setInterval(function() {
+        (function() { return false; }['constructor']('debugger')());
+    }, 100);
             // Pinch to Zoom
             const pImg = document.getElementById('previewImgSrc');
             pImg.addEventListener('mousedown', startPan);
@@ -1525,4 +1563,5 @@
     </script>
 </body>
 </html>
+
 
