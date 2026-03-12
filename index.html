@@ -510,8 +510,15 @@
         // --- Global variable for Popover Singleton ---
         let currentOpenPopoverId = null;
 
+        // --- NEW: Notification Variables ---
+        let lastKnownOrderId = null; 
+        const notificationSound = new Audio('https://cdn.shopify.com/s/files/1/0665/2333/2855/files/bell-ring.mp3'); 
+
         window.onload = function() {
             applyFilters();
+            requestNotificationPermission(); // Ask user for popup permission
+            startOrderPolling(); // Start checking loop
+            
             document.getElementById('mobileMenuBtn').addEventListener('click', function() {
                 document.getElementById('filterOptions').classList.toggle('show');
             });
@@ -544,6 +551,60 @@
             pImg.addEventListener('touchend', handleTouchEnd);
         };
         
+        // --- NEW: NOTIFICATION & POLLING LOGIC ---
+        function requestNotificationPermission() {
+            if ("Notification" in window) {
+                if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                    Notification.requestPermission();
+                }
+            }
+        }
+
+        function startOrderPolling() {
+            // Check every 60 seconds (60000 ms)
+            setInterval(async () => {
+                try {
+                    let url = SCRIPT_URL + `?action=getLatestOrderId`;
+                    let res = await fetch(url);
+                    let data = await res.json();
+                    
+                    if (data.status === 'success' && data.latest) {
+                        let currentLatestId = String(data.latest);
+                        
+                        // First load e just current ID ta save rakhbo
+                        if (lastKnownOrderId === null) {
+                            lastKnownOrderId = currentLatestId;
+                            return;
+                        }
+                        
+                        // Notun order asle (Order ID change hole)
+                        if (currentLatestId !== lastKnownOrderId) {
+                            lastKnownOrderId = currentLatestId; 
+                            playNotificationAlert(currentLatestId, data.amount);
+                            
+                            // Auto refresh kore dashboard update kore dibe
+                            applyFilters(); 
+                        }
+                    }
+                } catch(e) {
+                    console.log("Polling error: ", e);
+                }
+            }, 60000); 
+        }
+
+        function playNotificationAlert(orderId, amount) {
+            // 1. Play Sound
+            notificationSound.play().catch(e => console.log("Sound autoplay blocked by browser. User needs to interact with page first."));
+            
+            // 2. Show Desktop Popup
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("🎉 New Order Received!", {
+                    body: `Order #${orderId} has been placed. Amount: ${amount}`,
+                    icon: "https://cdn-icons-png.flaticon.com/512/1554/1554591.png"
+                });
+            }
+        }
+
         // --- ZOOM LOGIC ---
         let evCache = [];
         let prevDiff = -1;
