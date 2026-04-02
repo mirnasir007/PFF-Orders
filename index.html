@@ -1100,7 +1100,7 @@
 
         async function fetchProductVariants(pid) {
             let listDiv = document.getElementById('inventoryList');
-            listDiv.innerHTML = 'Loading variants...';
+            listDiv.innerHTML = '<div style="color:#aaa; text-align:center; padding: 20px;">Loading inventory...</div>';
             try {
                 let res = await fetch(`${SCRIPT_URL}?action=getProductVariants&productId=${pid}`);
                 let data = await res.json();
@@ -1110,33 +1110,82 @@
                     data.variants.forEach(v => {
                         let row = document.createElement('div');
                         row.className = 'inv-item';
+                        row.style.flexDirection = 'column';
+                        row.style.alignItems = 'stretch';
+                        row.style.marginBottom = '20px';
+                        row.style.backgroundColor = '#222'; 
+                        row.style.padding = '12px';
+                        row.style.borderRadius = '8px';
+                        row.style.border = '1px solid #333';
+                        
+                        let dhkColor = parseInt(v.dhanmondi) > 0 ? '#4effcd' : '#fff';
+                        let bnnColor = parseInt(v.banani) > 0 ? '#4effcd' : '#fff';
+                        let utrColor = parseInt(v.uttara) > 0 ? '#4effcd' : '#fff';
+
                         row.innerHTML = `
-                            <div class="inv-name">${v.title}</div>
-                            <input type="number" class="inv-input" value="${v.qty}" id="qty-${v.inventory_item_id}">
-                            <button class="btn-inv-save" onclick="saveInventory('${v.inventory_item_id}')">Save</button>
+                            <div class="inv-name" style="color: #4effcd; font-weight: 700; font-size: 15px; margin-bottom: 6px;">${v.title}</div>
+                            <div style="border-bottom: 1px dashed #555; margin-bottom: 12px;"></div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 6px; padding-left: 5px;">
+                                <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Dhanmondi:</span>
+                                <input type="number" class="inv-input" value="${v.dhanmondi}" id="dhk-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${dhkColor}; text-align: center; font-weight: 600;">
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 6px; padding-left: 5px;">
+                                <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Banani:</span>
+                                <input type="number" class="inv-input" value="${v.banani}" id="bnn-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${bnnColor}; text-align: center; font-weight: 600;">
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 15px; padding-left: 5px;">
+                                <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Uttara:</span>
+                                <input type="number" class="inv-input" value="${v.uttara}" id="utr-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${utrColor}; text-align: center; font-weight: 600;">
+                            </div>
+                            
+                            <div style="border-top: 1px solid #444; padding-top: 12px; margin-top: 5px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div style="display: flex; flex-direction: column;">
+                                        <span style="font-size: 12px; color: #888; font-weight: 600;">TOTAL QTY</span>
+                                        <span style="font-size: 11px; color: #aaa; margin-top: 4px; font-family: monospace; background: #333; padding: 2px 6px; border-radius: 3px; display: inline-block;">SKU: ${v.sku || 'N/A'}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center;">
+                                        <input type="number" class="inv-input" value="${v.qty}" id="qty-${v.inventory_item_id}" style="width: 55px; background: #111; border: 1px solid #555;">
+                                        <button class="btn-inv-save" onclick="saveInventory('${v.inventory_item_id}', '${v.id}')" style="background: #008060; border-color: #006e52;">Save</button>
+                                    </div>
+                                </div>
+                            </div>
                         `;
                         listDiv.appendChild(row);
                     });
                 } else {
-                    listDiv.innerHTML = 'Error loading variants';
+                    listDiv.innerHTML = '<div style="color:#ff6b6b; text-align:center;">Error loading variants</div>';
                 }
             } catch(e) {
-                listDiv.innerHTML = 'Connection error';
+                listDiv.innerHTML = '<div style="color:#ff6b6b; text-align:center;">Connection error</div>';
             }
         }
 
-        async function saveInventory(invItemId) {
+        async function saveInventory(invItemId, variantId) {
             let input = document.getElementById('qty-' + invItemId);
             let newQty = input.value;
-            let btn = input.nextElementSibling;
             
+            let dhkQty = document.getElementById('dhk-' + variantId).value || 0;
+            let bnnQty = document.getElementById('bnn-' + variantId).value || 0;
+            let utrQty = document.getElementById('utr-' + variantId).value || 0;
+            
+            let btn = input.nextElementSibling;
             btn.innerText = "...";
+            
             try {
-                let res = await fetch(`${SCRIPT_URL}?action=updateInventorySet&invItemId=${invItemId}&qty=${newQty}`);
+                let url = `${SCRIPT_URL}?action=updateInventorySet&invItemId=${invItemId}&qty=${newQty}&variantId=${variantId}&dhk=${encodeURIComponent(dhkQty)}&bnn=${encodeURIComponent(bnnQty)}&utr=${encodeURIComponent(utrQty)}`;
+                let res = await fetch(url);
                 let data = await res.json();
+                
                 if(data.status === 'success') {
                     showToast("Inventory Updated!");
                     btn.innerText = "✓";
+                    
+                    document.getElementById('dhk-' + variantId).style.color = parseInt(dhkQty) > 0 ? '#4effcd' : '#fff';
+                    document.getElementById('bnn-' + variantId).style.color = parseInt(bnnQty) > 0 ? '#4effcd' : '#fff';
+                    document.getElementById('utr-' + variantId).style.color = parseInt(utrQty) > 0 ? '#4effcd' : '#fff';
+                    
                     setTimeout(() => { btn.innerText = "Save"; }, 2000);
                 } else {
                     showToast("Error: " + data.message);
