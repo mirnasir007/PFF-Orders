@@ -139,6 +139,10 @@
         .img-caption-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; color: #4effcd; }
         .img-caption-type { font-size: 11px; color: #ddd; margin-bottom: 2px; font-weight: 500; font-style: italic; }
         .img-caption-sku { font-size: 11px; color: #ffeb3b; margin-bottom: 4px; font-weight: 600; font-family: monospace; }
+        .btn-global-stock { background: #008060; border: 1px solid #005c26; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; height: 20px; transition: 0.2s; margin-left: 10px; }
+        .btn-global-stock:hover { background: #006e52; }
+        .btn-global-stock:disabled { background: #6c757d; border-color: #5c636a; cursor: not-allowed; }
+        .gs-spinner { border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid #fff; border-radius: 50%; width: 10px; height: 10px; animation: spin 1s linear infinite; margin-right: 5px; display: inline-block; }
         
         .btn-inventory-toggle { background: #008060; border: none; color: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; white-space: nowrap; margin-left: 10px; }
         .btn-inventory-toggle:hover { background: #006e52; }
@@ -455,6 +459,13 @@
         </div>
     </div>
 
+    <div id="globalStockModal" class="modal" style="z-index: 2500;" onclick="if(event.target === this) closeModal('globalStockModal')">
+        <div class="modal-box" style="width: 350px; max-width: 95%;">
+            <span class="modal-close" onclick="closeModal('globalStockModal')">&times;</span>
+            <div id="globalStockContent"></div>
+        </div>
+    </div>
+
     <div id="imgPreview" class="img-preview" onclick="if(event.target === this) closeModal('imgPreview')">
         <span class="close-preview" onclick="closeModal('imgPreview')">&times;</span>
         <span class="img-nav prev-btn" id="prevBtn" onclick="navigatePreview(-1); event.stopPropagation();">&#10094;</span>
@@ -467,7 +478,10 @@
             <div class="caption-content">
                 <div class="img-caption-title" id="capTitle"></div>
                 <div class="img-caption-type" id="capType"></div>
-                <div class="img-caption-sku" id="capSku"></div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                    <div class="img-caption-sku" id="capSku" style="margin-bottom: 0;"></div>
+                    <div id="capStockBtnContainer"></div>
+                </div>
                 <div id="capDesc"></div>
             </div>
             <button class="btn-inventory-toggle" onclick="toggleInventoryDrawer()">Inventory</button>
@@ -489,6 +503,17 @@
         
         // --- COURIER CHECKER API URL ---
         const COURIER_API_URL = "https://script.google.com/macros/s/AKfycbzC2erjEesZ0iNytdujMJRXy9IVwbzwb9iOLMMWoN30Tgmo6jkqMEo8JXtdf1KX6jaN/exec"; 
+        // -------------------------------------------------------------------
+
+        // --- GLOBAL STOCK API & STORES ---
+        const STOCK_GAS_URL = "https://script.google.com/macros/s/AKfycbzSBmvEFfpXyEkppQgCaGHdeGHCoveJpVfAr1c7mGSvyFK8m4h54SLLLpGdzAx-JVuo/exec"; 
+        const stockStores = [
+          {code: "100010001", name: "PFF PREMIUM_WH"},
+          {code: "100010004", name: "PFF PREMIUM E-STORE"},
+          {code: "100010003", name: "PFF PREMIUM, BANANI"},
+          {code: "100010002", name: "PFF PREMIUM, DHANMONDI"},
+          {code: "100010006", name: "PFF (SS), Uttara"}
+        ];
         // -------------------------------------------------------------------
 
         let nextPageCursor = "", prevPageCursor = "";
@@ -1068,17 +1093,70 @@
                  document.getElementById('capTitle').innerText = data.title; 
                  document.getElementById('capType').innerText = data.type || ''; 
                  document.getElementById('capSku').innerText = data.sku ? `SKU: ${data.sku}` : '';
+                 document.getElementById('capStockBtnContainer').innerHTML = data.sku ? `<button id="btnGlobalStock" class="btn-global-stock" onclick="checkGlobalStock('${data.sku}')">Global Stock</button>` : '';
                  document.getElementById('capDesc').innerText = `${data.variant || ''} - ${data.price}`; 
              } else { 
                  document.getElementById('capTitle').innerText = ""; 
                  document.getElementById('capType').innerText = "";
                  document.getElementById('capSku').innerText = "";
+                 document.getElementById('capStockBtnContainer').innerHTML = "";
                  document.getElementById('capDesc').innerText = ""; 
              }
         }
         function navigatePreview(dir) {
              let newIndex = currentPreviewIndex + dir;
              if(newIndex >= 0 && newIndex < currentPreviewImages.length) { currentPreviewIndex = newIndex; showPreview(currentPreviewImages, newIndex); }
+        }
+
+        async function checkGlobalStock(sku) {
+            const btn = document.getElementById('btnGlobalStock');
+            if(!btn) return;
+            btn.innerHTML = `<span class="gs-spinner"></span> Checking...`;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(STOCK_GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: "check_bulk",
+                        barcodes: [sku],
+                        stores: stockStores.map(s => s.code)
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success && data.results && data.results[sku]) {
+                    const res = data.results[sku];
+                    let html = `<h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px; color:#008060; font-size: 16px;">Stock: ${sku}</h3>`;
+                    let total = 0;
+                    
+                    html += `<div style="margin-bottom:15px;">`;
+                    stockStores.forEach(store => {
+                        const qty = res.stockByStore[store.code] || 0;
+                        total += qty;
+                        html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+                                    <span style="font-size:13px; color:#334155; font-weight:600;">${store.name}</span>
+                                    <span style="font-size:14px; font-weight:700; color:${qty > 0 ? '#059669' : '#e11d48'};">${qty}</span>
+                                 </div>`;
+                    });
+                    html += `</div>`;
+                    
+                    html += `<div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid #cbd5e1; font-weight:800; font-size:16px;">
+                                <span style="color:#0f172a;">TOTAL GLOBAL STOCK</span>
+                                <span style="color:#008060;">${total}</span>
+                             </div>`;
+                             
+                    document.getElementById('globalStockContent').innerHTML = html;
+                    document.getElementById('globalStockModal').style.display = 'flex';
+                } else {
+                    showToast("No stock data found for this SKU");
+                }
+            } catch(e) {
+                showToast("Failed to fetch stock");
+            } finally {
+                btn.innerHTML = `Global Stock`;
+                btn.disabled = false;
+            }
         }
 
         // --- INVENTORY DRAWER LOGIC ---
