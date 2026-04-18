@@ -1204,28 +1204,39 @@
                             <div class="inv-name" style="color: #4effcd; font-weight: 700; font-size: 15px; margin-bottom: 6px;">${v.title}</div>
                             <div style="border-bottom: 1px dashed #555; margin-bottom: 12px;"></div>
                             
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 6px; padding-left: 5px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 8px; padding-left: 5px;">
                                 <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Dhanmondi:</span>
-                                <input type="number" class="inv-input" value="${v.dhanmondi}" id="dhk-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${dhkColor}; text-align: center; font-weight: 600;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="number" class="inv-input" value="${v.dhanmondi}" id="dhk-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${dhkColor}; text-align: center; font-weight: 600; margin-right: 0;">
+                                    <button class="btn-inv-save" onclick="saveSingleInventory('${v.inventory_item_id}', '115051364533', 'dhk-${v.id}', this)" style="background: #008060; border-color: #006e52; padding: 2px 8px; font-size: 11px;">Save</button>
+                                </div>
                             </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 6px; padding-left: 5px;">
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 8px; padding-left: 5px;">
                                 <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Banani:</span>
-                                <input type="number" class="inv-input" value="${v.banani}" id="bnn-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${bnnColor}; text-align: center; font-weight: 600;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="number" class="inv-input" value="${v.banani}" id="bnn-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${bnnColor}; text-align: center; font-weight: 600; margin-right: 0;">
+                                    <button class="btn-inv-save" onclick="saveSingleInventory('${v.inventory_item_id}', '115051397301', 'bnn-${v.id}', this)" style="background: #008060; border-color: #006e52; padding: 2px 8px; font-size: 11px;">Save</button>
+                                </div>
                             </div>
+
                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #aaa; margin-bottom: 15px; padding-left: 5px;">
                                 <span style="display: flex; align-items: center; gap: 6px;"><span style="color:#ff3b6b; font-size: 10px;">📍</span> Uttara:</span>
-                                <input type="number" class="inv-input" value="${v.uttara}" id="utr-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${utrColor}; text-align: center; font-weight: 600;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <input type="number" class="inv-input" value="${v.uttara}" id="utr-${v.id}" style="width: 45px; height: 24px; padding: 2px 4px; border: 1px solid #444; border-radius: 4px; background: #111; color: ${utrColor}; text-align: center; font-weight: 600; margin-right: 0;">
+                                    <button class="btn-inv-save" onclick="saveSingleInventory('${v.inventory_item_id}', '115051430069', 'utr-${v.id}', this)" style="background: #008060; border-color: #006e52; padding: 2px 8px; font-size: 11px;">Save</button>
+                                </div>
                             </div>
                             
                             <div style="border-top: 1px solid #444; padding-top: 12px; margin-top: 5px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div style="display: flex; flex-direction: column;">
-                                        <span style="font-size: 12px; color: #888; font-weight: 600;">TOTAL QTY</span>
+                                        <span style="font-size: 12px; color: #888; font-weight: 600;">MAIN STOCK</span>
                                         <span style="font-size: 11px; color: #aaa; margin-top: 4px; font-family: monospace; background: #333; padding: 2px 6px; border-radius: 3px; display: inline-block;">SKU: ${v.sku || 'N/A'}</span>
                                     </div>
-                                    <div style="display: flex; align-items: center;">
-                                        <input type="number" class="inv-input" value="${v.qty}" id="qty-${v.inventory_item_id}" style="width: 55px; background: #111; border: 1px solid #555;">
-                                        <button class="btn-inv-save" onclick="saveInventory('${v.inventory_item_id}', '${v.id}')" style="background: #008060; border-color: #006e52;">Save</button>
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="number" class="inv-input" value="${v.qty}" id="qty-${v.inventory_item_id}" style="width: 55px; background: #111; border: 1px solid #555; margin-right: 0;">
+                                        <button class="btn-inv-save" onclick="saveSingleInventory('${v.inventory_item_id}', '69861605557', 'qty-${v.inventory_item_id}', this)" style="background: #008060; border-color: #006e52;">Save</button>
                                     </div>
                                 </div>
                             </div>
@@ -1240,19 +1251,15 @@
             }
         }
 
-        async function saveInventory(invItemId, variantId) {
-            let input = document.getElementById('qty-' + invItemId);
+        async function saveSingleInventory(invItemId, locationId, inputId, btn) {
+            let input = document.getElementById(inputId);
             let newQty = input.value;
             
-            let dhkQty = document.getElementById('dhk-' + variantId).value || 0;
-            let bnnQty = document.getElementById('bnn-' + variantId).value || 0;
-            let utrQty = document.getElementById('utr-' + variantId).value || 0;
-            
-            let btn = input.nextElementSibling;
             btn.innerText = "...";
+            btn.disabled = true;
             
             try {
-                let url = `${SCRIPT_URL}?action=updateInventorySet&invItemId=${invItemId}&qty=${newQty}&variantId=${variantId}&dhk=${encodeURIComponent(dhkQty)}&bnn=${encodeURIComponent(bnnQty)}&utr=${encodeURIComponent(utrQty)}`;
+                let url = `${SCRIPT_URL}?action=updateInventorySet&invItemId=${invItemId}&locationId=${locationId}&qty=${newQty}`;
                 let res = await fetch(url);
                 let data = await res.json();
                 
@@ -1260,18 +1267,22 @@
                     showToast("Inventory Updated!");
                     btn.innerText = "✓";
                     
-                    document.getElementById('dhk-' + variantId).style.color = parseInt(dhkQty) > 0 ? '#4effcd' : '#fff';
-                    document.getElementById('bnn-' + variantId).style.color = parseInt(bnnQty) > 0 ? '#4effcd' : '#fff';
-                    document.getElementById('utr-' + variantId).style.color = parseInt(utrQty) > 0 ? '#4effcd' : '#fff';
+                    // Quantity 0 এর বেশি হলে ইনপুটের টেক্সট কালার গ্রিন করে দিবে (সুন্দর দেখানোর জন্য)
+                    input.style.color = parseInt(newQty) > 0 ? '#4effcd' : '#fff';
                     
-                    setTimeout(() => { btn.innerText = "Save"; }, 2000);
+                    setTimeout(() => { 
+                        btn.innerText = "Save"; 
+                        btn.disabled = false;
+                    }, 2000);
                 } else {
                     showToast("Error: " + data.message);
                     btn.innerText = "Retry";
+                    btn.disabled = false;
                 }
             } catch(e) {
                 showToast("Connection Error");
                 btn.innerText = "Retry";
+                btn.disabled = false;
             }
         }
 
@@ -1717,6 +1728,5 @@
     </script>
 </body>
 </html>
-
 
 
