@@ -1122,7 +1122,54 @@ function updatePreviewContent() {
         }
 
         async function checkGlobalStock(sku) {
-// ...
+            const btn = document.getElementById('btnGlobalStock');
+            if(!btn) return;
+            btn.innerHTML = `<span class="gs-spinner"></span> Checking...`;
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(STOCK_GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: "check_bulk",
+                        barcodes: [sku],
+                        stores: stockStores.map(s => s.code)
+                    })
+                });
+                const data = await response.json();
+
+                if (data.success && data.results && data.results[sku]) {
+                    const res = data.results[sku];
+                    let html = `<h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px; color:#008060; font-size: 16px;">Stock: ${sku}</h3>`;
+                    let total = 0;
+                    
+                    html += `<div style="margin-bottom:15px;">`;
+                    stockStores.forEach(store => {
+                        const qty = res.stockByStore[store.code] || 0;
+                        total += qty;
+                        html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
+                                    <span style="font-size:13px; color:#334155; font-weight:600;">${store.name}</span>
+                                    <span style="font-size:14px; font-weight:700; color:${qty > 0 ? '#059669' : '#e11d48'};">${qty}</span>
+                                 </div>`;
+                    });
+                    html += `</div>`;
+                    
+                    html += `<div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid #cbd5e1; font-weight:800; font-size:16px;">
+                                <span style="color:#0f172a;">TOTAL GLOBAL STOCK</span>
+                                <span style="color:#008060;">${total}</span>
+                             </div>`;
+                             
+                    document.getElementById('globalStockContent').innerHTML = html;
+                    document.getElementById('globalStockModal').style.display = 'flex';
+                } else {
+                    showToast("No stock data found for this SKU");
+                }
+            } catch(e) {
+                showToast("Failed to fetch stock");
+            } finally {
+                btn.innerHTML = `Global Stock`;
+                btn.disabled = false;
+            }
         }
 
         // --- INVENTORY DRAWER LOGIC ---
