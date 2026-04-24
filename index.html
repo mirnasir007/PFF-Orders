@@ -484,7 +484,12 @@
                 </div>
                 <div id="capDesc"></div>
             </div>
-            <button class="btn-inventory-toggle" onclick="toggleInventoryDrawer()">Inventory</button>
+            
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div id="quickStockSummary" style="display: flex; flex-direction: column; align-items: flex-start; font-size: 11px; font-weight: 600; line-height: 1.4; text-align: left; min-width: 120px;">
+                    </div>
+                <button class="btn-inventory-toggle" onclick="toggleInventoryDrawer()">Inventory</button>
+            </div>
         </div>
 
         <div id="inventoryDrawer" class="inventory-drawer" onclick="event.stopPropagation()">
@@ -1082,7 +1087,7 @@
              document.getElementById('imgPreview').style.display = 'flex';
         }
 
-        function updatePreviewContent() {
+function updatePreviewContent() {
              const img = document.getElementById('previewImgSrc');
              const data = currentPreviewImages[currentPreviewIndex];
              const src = data.src ? data.src : data; 
@@ -1102,6 +1107,14 @@
                  document.getElementById('capStockBtnContainer').innerHTML = "";
                  document.getElementById('capDesc').innerText = ""; 
              }
+             
+             document.getElementById('quickStockSummary').innerHTML = '<span style="color:#aaa; font-size:11px;">Loading stock...</span>';
+             if (data && data.pid) {
+                 fetchProductVariants(data.pid);
+             } else {
+                 document.getElementById('quickStockSummary').innerHTML = '';
+                 document.getElementById('inventoryList').innerHTML = '<div style="padding:10px; color:#aaa">No Product ID found.</div>';
+             }
         }
         function navigatePreview(dir) {
              let newIndex = currentPreviewIndex + dir;
@@ -1109,54 +1122,7 @@
         }
 
         async function checkGlobalStock(sku) {
-            const btn = document.getElementById('btnGlobalStock');
-            if(!btn) return;
-            btn.innerHTML = `<span class="gs-spinner"></span> Checking...`;
-            btn.disabled = true;
-
-            try {
-                const response = await fetch(STOCK_GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: "check_bulk",
-                        barcodes: [sku],
-                        stores: stockStores.map(s => s.code)
-                    })
-                });
-                const data = await response.json();
-
-                if (data.success && data.results && data.results[sku]) {
-                    const res = data.results[sku];
-                    let html = `<h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px; color:#008060; font-size: 16px;">Stock: ${sku}</h3>`;
-                    let total = 0;
-                    
-                    html += `<div style="margin-bottom:15px;">`;
-                    stockStores.forEach(store => {
-                        const qty = res.stockByStore[store.code] || 0;
-                        total += qty;
-                        html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                                    <span style="font-size:13px; color:#334155; font-weight:600;">${store.name}</span>
-                                    <span style="font-size:14px; font-weight:700; color:${qty > 0 ? '#059669' : '#e11d48'};">${qty}</span>
-                                 </div>`;
-                    });
-                    html += `</div>`;
-                    
-                    html += `<div style="display:flex; justify-content:space-between; padding-top:10px; border-top:2px solid #cbd5e1; font-weight:800; font-size:16px;">
-                                <span style="color:#0f172a;">TOTAL GLOBAL STOCK</span>
-                                <span style="color:#008060;">${total}</span>
-                             </div>`;
-                             
-                    document.getElementById('globalStockContent').innerHTML = html;
-                    document.getElementById('globalStockModal').style.display = 'flex';
-                } else {
-                    showToast("No stock data found for this SKU");
-                }
-            } catch(e) {
-                showToast("Failed to fetch stock");
-            } finally {
-                btn.innerHTML = `Global Stock`;
-                btn.disabled = false;
-            }
+// ...
         }
 
         // --- INVENTORY DRAWER LOGIC ---
@@ -1166,18 +1132,12 @@
                 drawer.classList.remove('open');
             } else {
                 drawer.classList.add('open');
-                // Fetch Data on Open if needed
-                let data = currentPreviewImages[currentPreviewIndex];
-                if(data && data.pid) {
-                    fetchProductVariants(data.pid);
-                } else {
-                    document.getElementById('inventoryList').innerHTML = '<div style="padding:10px; color:#aaa">No Product ID found.</div>';
-                }
             }
         }
 
         async function fetchProductVariants(pid) {
             let listDiv = document.getElementById('inventoryList');
+            let summaryDiv = document.getElementById('quickStockSummary');
             listDiv.innerHTML = '<div style="color:#aaa; text-align:center; padding: 20px;">Loading inventory...</div>';
             try {
                 let res = await fetch(`${SCRIPT_URL}?action=getProductVariants&productId=${pid}`);
@@ -1185,6 +1145,39 @@
                 listDiv.innerHTML = '';
                 
                 if(data.status === 'success' && data.variants) {
+                    let currentViewedVariant = currentPreviewImages[currentPreviewIndex].variant || "";
+                    let targetVariant = data.variants.find(v => v.title === currentViewedVariant || (currentViewedVariant === "" && v.title === "Default Title")) || data.variants[0];
+                    
+                    if (targetVariant) {
+                        let availParts = [];
+                        if (targetVariant.qty > 0) availParts.push(`Admin(${targetVariant.qty})`);
+                        if (targetVariant.dhanmondi > 0) availParts.push(`Dhanmondi(${targetVariant.dhanmondi})`);
+                        if (targetVariant.banani > 0) availParts.push(`Banani(${targetVariant.banani})`);
+                        if (targetVariant.uttara > 0) availParts.push(`Uttara(${targetVariant.uttara})`);
+                        
+                        let commParts = [];
+                        if (targetVariant.committed_qty > 0) commParts.push(`Admin(${targetVariant.committed_qty})`);
+                        if (targetVariant.committed_dhanmondi > 0) commParts.push(`Dhanmondi(${targetVariant.committed_dhanmondi})`);
+                        if (targetVariant.committed_banani > 0) commParts.push(`Banani(${targetVariant.committed_banani})`);
+                        if (targetVariant.committed_uttara > 0) commParts.push(`Uttara(${targetVariant.committed_uttara})`);
+                        
+                        let availStr = availParts.length > 0 ? availParts.join(', ') : 'N/A';
+                        let commStr = commParts.length > 0 ? commParts.join(', ') : 'N/A';
+                        
+                        summaryDiv.innerHTML = `
+                            <div style="color: #4effcd; margin-bottom: 4px; display: flex; justify-content: space-between; width: 100%;">
+                                <span style="margin-right: 8px;">Available :</span> 
+                                <span style="color:#fff; text-align: right;">${availStr}</span>
+                            </div>
+                            <div style="color: #ffeb3b; display: flex; justify-content: space-between; width: 100%;">
+                                <span style="margin-right: 8px;">Committed :</span> 
+                                <span style="color:#fff; text-align: right;">${commStr}</span>
+                            </div>
+                        `;
+                    } else {
+                        summaryDiv.innerHTML = '';
+                    }
+
                     data.variants.forEach(v => {
                         let row = document.createElement('div');
                         row.className = 'inv-item';
