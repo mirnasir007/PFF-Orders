@@ -1,7 +1,7 @@
 var SHOP_DOMAIN = "pff-premium-store.myshopify.com";
-var ACCESS_TOKEN = "xxxxxxxxxxx"; // Recommend storing in Script Properties
-var SHEET_ID = "xxxxxxxxxxxx";
-var LOCATION_ID = "xxxxx";
+const ACCESS_TOKEN = PropertiesService.getScriptProperties().getProperty('SHOPIFY_ACCESS_TOKEN')
+var SHEET_ID = "1ScwvIVZLisTSvrFxmUj51TSJ2XERz8mxfKP6jvY7XQw";
+var LOCATION_ID = "69861605557";
 var API_VERSION = "2025-10"; // Use a stable version (2025-10 implies future/unstable)
 
 // ---------------------------------------------------------
@@ -12,17 +12,16 @@ var API_VERSION = "2025-10"; // Use a stable version (2025-10 implies future/uns
 function doPost(e) {
   try {
     if (!e || !e.postData || !e.postData.contents) return ContentService.createTextOutput("No data");
-    
     var jsonString = e.postData.contents;
     var data = JSON.parse(jsonString);
-    var topic = e.parameter.topic || "orders/create"; // You can pass ?topic=orders/update in webhook URL
+    var topic = e.parameter.topic || "orders/create";
+    // You can pass ?topic=orders/update in webhook URL
 
-    // Process the webhook data sync to Sheet
+    // Process the webhook data sync to Sheet safely
     syncOrderToSheet(data);
     
     return ContentService.createTextOutput("Webhook Received");
   } catch (err) {
-    // Log error to a generic sheet or logger
     console.error("Webhook Error: " + err.toString());
     return ContentService.createTextOutput("Error");
   }
@@ -30,7 +29,6 @@ function doPost(e) {
 
 function doGet(e) {
   var action = e.parameter.action;
-  
   if (!action) {
     return HtmlService.createTemplateFromFile('index')
       .evaluate()
@@ -46,25 +44,48 @@ function doGet(e) {
   if (action === "updateSheetOrder") return handleUpdateSheetOrder(e);
   if (action === "getOrderImages") return handleGetOrderImages(e);
   if (action === "updateCustomerOnly") return handleUpdateCustomerOnly(e);
+  if (action === "getLatestOrderId") return handleGetLatestOrderId(e); // NEW: Notification checking
+  
   // --- FULFILLMENT ACTIONS ---
   if (action === "getFulfillmentOrders") return handleGetFulfillmentOrders(e);
   if (action === "fulfillOrder") return handleFulfillOrder(e);
+  
   // --- SHOP ACTIONS ---
   if (action === "markShopifyPaid") return handleMarkShopifyPaid(e);
   if (action === "cancelShopifyOrder") return handleCancelShopifyOrder(e);
   if (action === "restockItem") return handleRestockItem(e);
+  
   // --- NEW EDIT ACTIONS ---
   if (action === "searchProducts") return handleSearchProducts(e);
   if (action === "editShopifyOrder") return handleEditShopifyOrder(e);
+  
   // --- UPDATE ORDER CUSTOMER DETAILS ---
   if (action === "updateOrderCustomer") return handleUpdateOrderCustomer(e);
+  
   // --- INVENTORY ACTIONS ---
   if (action === "getProductVariants") return handleGetProductVariants(e);
   if (action === "updateInventorySet") return handleUpdateInventorySet(e);
 }
-
 // ---------------------------------------------------------
-// ANTI-BLOCKING SHOPIFY FETCHER (CRITICAL UPDATE)
+// NEW: GET LATEST ORDER FOR NOTIFICATION
+// ---------------------------------------------------------
+function handleGetLatestOrderId(e) {
+  try {
+    // Shudhu 1ta order nibo jate Shopify rate limit problem na kore
+    var endpoint = "orders.json?limit=1&status=any&fields=id,order_number,total_price";
+    var response = fetchShopifySafe(endpoint, "get");
+    var json = JSON.parse(response.getContentText());
+    
+    if (json.orders && json.orders.length > 0) {
+      return sendJSON({status: "success", latest: json.orders[0].order_number, amount: json.orders[0].total_price});
+    }
+    return sendJSON({status: "error", message: "No orders found"});
+  } catch(err) { 
+    return sendJSON({status: "error", message: err.toString()}); 
+  }
+}
+// ---------------------------------------------------------
+// ANTI-BLOCKING SHOPIFY FETCHER
 // ---------------------------------------------------------
 function fetchShopifySafe(endpoint, method, payload) {
   var url = "https://" + SHOP_DOMAIN + "/admin/api/" + API_VERSION + "/" + endpoint;
@@ -76,7 +97,6 @@ function fetchShopifySafe(endpoint, method, payload) {
     },
     "muteHttpExceptions": true
   };
-  
   if (payload) options.payload = JSON.stringify(payload);
 
   var maxRetries = 3;
@@ -84,18 +104,15 @@ function fetchShopifySafe(endpoint, method, payload) {
     var response = UrlFetchApp.fetch(url, options);
     var code = response.getResponseCode();
     
-    // Check for Rate Limit (429)
+    // Check for Rate Limit (429) to prevent blocking
     if (code === 429) {
       var retryAfter = response.getHeaders()['Retry-After'];
       var sleepTime = retryAfter ? parseFloat(retryAfter) * 1000 : 2000;
-      console.warn("Rate limit hit. Sleeping for " + sleepTime + "ms");
       Utilities.sleep(sleepTime + 500); // Add slight buffer
-      continue; // Retry loop
+      continue; 
     }
-    
-    return response; // Return successful or other error response
+    return response; 
   }
-  
   throw new Error("Shopify API Rate Limit Exceeded after retries.");
 }
 
@@ -111,7 +128,7 @@ function shopifyGraphQL(query, variables) {
 }
 
 // ---------------------------------------------------------
-// HELPER: SYNC WEBHOOK DATA TO SHEET (FINAL STABLE VERSION)
+// HELPER: SYNC WEBHOOK DATA TO SHEET
 // ---------------------------------------------------------
 function syncOrderToSheet(orderData) {
   var lock = LockService.getScriptLock();
@@ -126,7 +143,6 @@ function syncOrderToSheet(orderData) {
     var ss = SpreadsheetApp.openById(SHEET_ID);
     var sheet = ss.getSheetByName("Orders");
     var data = sheet.getDataRange().getValues();
-    
     var orderId = String(orderData.order_number);
     var rowIndex = -1;
 
@@ -140,30 +156,25 @@ function syncOrderToSheet(orderData) {
 
     // Format Data
     var date = new Date(orderData.created_at).toISOString().slice(0, 10);
-    
     var name = orderData.shipping_address ? 
       (orderData.shipping_address.first_name + " " + orderData.shipping_address.last_name) : 
       (orderData.customer ? orderData.customer.first_name + " " + orderData.customer.last_name : "No Name");
-      
     var phone = String((orderData.shipping_address ? orderData.shipping_address.phone : (orderData.customer ? orderData.customer.phone : "")) || "")
       .replace(/[^0-9]/g, "")
       .replace(/^88/, "");
-      
     var address = orderData.shipping_address ? 
       [orderData.shipping_address.address1, orderData.shipping_address.address2, orderData.shipping_address.city].filter(Boolean).join(", ") : "";
     
-    // PRICE LOGIC: Prioritize current_total_price to capture edits/removals correctly
+    // PRICE LOGIC: Prioritize current_total_price
     var amount = orderData.total_price;
     if (orderData.current_total_price !== undefined && orderData.current_total_price !== null) {
        amount = orderData.current_total_price;
     }
 
     if (rowIndex === -1) {
-      // Append New Order
       sheet.appendRow([date, "'" + orderId, name, "'" + phone, address, amount, "", "Pending", ""]);
       SpreadsheetApp.flush();
     } else {
-      // Update Existing Order Amount
       sheet.getRange(rowIndex, 6).setValue(amount);
       SpreadsheetApp.flush();
     }
@@ -181,32 +192,59 @@ function handleGetProductVariants(e) {
   var pId = e.parameter.productId;
   if (!pId) return sendJSON({status: "error", message: "Product ID missing"});
   
+  var MAIN_LOC = "69861605557";
+  var DHK_LOC = "115051364533";
+  var BNN_LOC = "115051397301";
+  var UTR_LOC = "115051430069";
+  var ALL_LOCS = MAIN_LOC + "," + DHK_LOC + "," + BNN_LOC + "," + UTR_LOC;
+
   try {
-    // 1. Get Variants
-    var vRes = fetchShopifySafe("products/" + pId + "/variants.json", "get");
-    var vJson = JSON.parse(vRes.getContentText());
+    var query = `query {
+      product(id: "gid://shopify/Product/${pId}") {
+        variants(first: 50) {
+          edges {
+            node {
+              id
+              title
+              sku
+              inventoryItem { id }
+            }
+          }
+        }
+      }
+    }`;
+    var json = shopifyGraphQL(query, {});
+    if (json.errors || !json.data || !json.data.product) {
+      return sendJSON({status: "error", message: "Failed to fetch variant details via GraphQL"});
+    }
+
+    var variants = json.data.product.variants.edges;
+    var invItemIds = variants.map(function(edge) { return edge.node.inventoryItem.id.split("/").pop(); });
     
-    if (!vJson.variants) return sendJSON({status: "error", message: "No variants found"});
-    var variants = vJson.variants;
-    var invItemIds = variants.map(function(v) { return v.inventory_item_id; });
-    
-    // 2. Get Inventory Levels
-    var invRes = fetchShopifySafe("inventory_levels.json?location_ids=" + LOCATION_ID + "&inventory_item_ids=" + invItemIds.join(","), "get");
+    var invRes = fetchShopifySafe("inventory_levels.json?location_ids=" + ALL_LOCS + "&inventory_item_ids=" + invItemIds.join(","), "get");
     var invJson = JSON.parse(invRes.getContentText());
+    
     var levelsMap = {};
     if (invJson.inventory_levels) {
         invJson.inventory_levels.forEach(function(lvl) {
-            levelsMap[lvl.inventory_item_id] = lvl.available;
+            if (!levelsMap[lvl.inventory_item_id]) levelsMap[lvl.inventory_item_id] = {};
+            levelsMap[lvl.inventory_item_id][lvl.location_id] = lvl.available;
         });
     }
-    
-    // 3. Merge Data
-    var result = variants.map(function(v) {
+
+    var result = variants.map(function(edge) {
+        var node = edge.node;
+        var invId = node.inventoryItem.id.split("/").pop();
+        var locData = levelsMap[invId] || {};
         return {
-            id: v.id,
-            title: v.title,
-            inventory_item_id: v.inventory_item_id,
-            qty: levelsMap[v.inventory_item_id] !== undefined ? levelsMap[v.inventory_item_id] : 0 
+            id: node.id.split("/").pop(),
+            title: node.title,
+            sku: node.sku || "",
+            inventory_item_id: invId,
+            qty: locData[MAIN_LOC] !== undefined ? locData[MAIN_LOC] : 0,
+            dhanmondi: locData[DHK_LOC] !== undefined ? locData[DHK_LOC] : 0,
+            banani: locData[BNN_LOC] !== undefined ? locData[BNN_LOC] : 0,
+            uttara: locData[UTR_LOC] !== undefined ? locData[UTR_LOC] : 0
         };
     });
     return sendJSON({status: "success", variants: result});
@@ -216,29 +254,22 @@ function handleGetProductVariants(e) {
   }
 }
 
-// ---------------------------------------------------------
-// NEW: UPDATE INVENTORY (SET EXACT VALUE)
-// ---------------------------------------------------------
 function handleUpdateInventorySet(e) {
-  var invItemId = e.parameter.invItemId;
-  var qty = parseInt(e.parameter.qty);
-  if (!invItemId) return sendJSON({status: "error", message: "Item ID missing"});
+  var p = e.parameter;
+  var invItemId = p.invItemId;
+  var locationId = p.locationId;
+  var qty = parseInt(p.qty);
+  
+  if (!invItemId || !locationId) return sendJSON({status: "error", message: "Item ID or Location ID missing"});
   
   try {
-    var payload = {
-      "location_id": LOCATION_ID,
-      "inventory_item_id": invItemId,
-      "available": qty
-    };
-    
-    var res = fetchShopifySafe("inventory_levels/set.json", "post", payload);
-    var json = JSON.parse(res.getContentText());
-    
-    if (json.inventory_level) {
-       return sendJSON({status: "success", message: "Updated to " + qty});
-    } else {
-       return sendJSON({status: "error", message: JSON.stringify(json)});
-    }
+    fetchShopifySafe("inventory_levels/set.json", "post", {
+        "location_id": locationId,
+        "inventory_item_id": invItemId,
+        "available": qty
+    });
+
+    return sendJSON({status: "success", message: "Updated successfully"});
   } catch(err) {
     return sendJSON({status: "error", message: err.toString()});
   }
@@ -255,9 +286,7 @@ function handleGetOrders(e) {
     
     var endpoint = "orders.json?limit=" + limit;
     var userStatus = params.status || "any";
-
-    // ... (Existing filtering logic kept same, building query params) ...
-    // Simplified specific query building for brevity but utilizing existing logic:
+    
     if (userStatus !== "any" && ["pending", "paid", "void", "product_entry", "courier"].indexOf(userStatus) !== -1) {
        var filteredIds = [];
        for (var id in savedDataMap) {
@@ -274,7 +303,7 @@ function handleGetOrders(e) {
        }
 
        if (filteredIds.length > 0) {
-          var limitedIds = filteredIds.slice(0, 60); // Shopify URL length limit safety
+          var limitedIds = filteredIds.slice(0, 60); 
           var queryParts = limitedIds.map(function(num) { return "name:" + num; });
           endpoint += "&status=any&query=" + encodeURIComponent(queryParts.join(" OR "));
        } else {
@@ -289,7 +318,6 @@ function handleGetOrders(e) {
     }
 
     if (params.search) {
-      // ... (Search logic same as original) ...
       var q = params.search.trim();
       var qLower = q.toLowerCase();
       var searchTerms = [];
@@ -301,13 +329,13 @@ function handleGetOrders(e) {
         var sInvoice = String(s.invoice || "").toLowerCase();
 
         if (sName.indexOf(qLower) > -1 || (qClean.length > 5 && sPhone.indexOf(qClean) > -1) || sInvoice.indexOf(qLower) > -1) {
-            searchTerms.push("name:" + id); 
+            searchTerms.push("name:" + id);
         }
       }
       var rawQuery = q;
       if (/^\d+$/.test(rawQuery) && rawQuery.length < 10) rawQuery = "#" + rawQuery; 
       searchTerms.push(rawQuery);
-      var uniqueTerms = [...new Set(searchTerms)].slice(0, 25); 
+      var uniqueTerms = [...new Set(searchTerms)].slice(0, 25);
       endpoint += "&status=any&query=" + encodeURIComponent(uniqueTerms.join(" OR "));
     }
 
@@ -316,11 +344,9 @@ function handleGetOrders(e) {
     if (params.dateFrom) endpoint += "&created_at_min=" + params.dateFrom + "T00:00:00";
     if (params.dateTo) endpoint += "&created_at_max=" + params.dateTo + "T23:59:59";
     if (params.page_info) endpoint = "orders.json?limit=" + limit + "&page_info=" + params.page_info;
-
-    // USE SAFE FETCH
+    
     var response = fetchShopifySafe(endpoint, "get");
     var json = JSON.parse(response.getContentText());
-
     var nextCursor = "", prevCursor = "";
     if (response.getAllHeaders()['Link']) {
       var links = response.getAllHeaders()['Link'].split(',');
@@ -335,7 +361,7 @@ function handleGetOrders(e) {
       orders = orders.filter(function(order) { return savedDataMap[String(order.order_number)] !== undefined; });
     }
     
-    // Batch Image Fetching (Optimized inside)
+    // FAST ASYNC IMAGE FETCHING
     var imagesMap = fetchImagesForOrders(orders);
     
     var entryAmountTotal = 0;
@@ -370,7 +396,7 @@ function handleGetSheetOrders(e) {
         address: r[4], amount: r[5], note: r[6], status: r[7], invoice: r[8]
       });
     }
-    // ... Filtering Logic same as original ...
+    
     if (e.parameter.search) {
       var q = e.parameter.search.toLowerCase().trim();
       orderList = orderList.filter(function(o) {
@@ -378,7 +404,7 @@ function handleGetSheetOrders(e) {
       });
     }
 
-    orderList.reverse(); // Newest first
+    orderList.reverse(); 
 
     if (e.parameter.export === 'true') { return sendJSON({status: "success", orders: orderList}); }
 
@@ -397,7 +423,7 @@ function handleGetSheetOrders(e) {
 }
 
 // ---------------------------------------------------------
-// SEARCH PRODUCTS
+// GRAPHQL SEARCH PRODUCTS
 // ---------------------------------------------------------
 function handleSearchProducts(e) {
   var q = e.parameter.q;
@@ -422,7 +448,7 @@ function handleSearchProducts(e) {
 }
 
 // ---------------------------------------------------------
-// EDIT SHOPIFY ORDER
+// GRAPHQL EDIT SHOPIFY ORDER
 // ---------------------------------------------------------
 function handleEditShopifyOrder(e) {
   var p = e.parameter; var orderNumber = p.orderId;
@@ -437,7 +463,6 @@ function handleEditShopifyOrder(e) {
      var calcId = beginRes.data.orderEditBegin.calculatedOrder.id;
      var currentLines = beginRes.data.orderEditBegin.calculatedOrder.lineItems.edges;
      
-     // Process Removals
      for(var i=0; i<removals.length; i++) {
         var rem = removals[i];
         var targetLine = null;
@@ -450,7 +475,7 @@ function handleEditShopifyOrder(e) {
           shopifyGraphQL(remQuery, { id: calcId, lineItemId: targetLine.id, qty: 0 });
         }
      }
-     // Process Additions
+     
      for(var j=0; j<additions.length; j++) {
         var add = additions[j];
         var varGid = "gid://shopify/ProductVariant/" + add.variantId;
@@ -465,17 +490,15 @@ function handleEditShopifyOrder(e) {
 }
 
 // ---------------------------------------------------------
-// HELPER FUNCTIONS (Simplified and using Safe Fetch)
+// HELPER FUNCTIONS
 // ---------------------------------------------------------
 
 function findShopifyOrderId(orderNumber) {
   try {
-    // Attempt with straight number
     var url1 = "orders.json?name=" + encodeURIComponent(orderNumber) + "&status=any&fields=id,order_number,name";
     var res1 = JSON.parse(fetchShopifySafe(url1, "get").getContentText());
     if (res1.orders) { for (var i = 0; i < res1.orders.length; i++) { if (String(res1.orders[i].order_number) === String(orderNumber)) return res1.orders[i].id; } }
     
-    // Attempt with #
     var url2 = "orders.json?name=" + encodeURIComponent("#" + orderNumber) + "&status=any&fields=id,order_number,name";
     var res2 = JSON.parse(fetchShopifySafe(url2, "get").getContentText());
     if (res2.orders) { for (var j = 0; j < res2.orders.length; j++) { if (String(res2.orders[j].order_number) === String(orderNumber)) return res2.orders[j].id; } }
@@ -506,16 +529,29 @@ function handleSaveOrder(e) {
 
 function handleGetOrderImages(e) { return sendJSON({status: "success", images: []}); }
 
+// ---------------------------------------------------------
+// ORIGINAL SAFE DATA READER (100% RELIABLE)
+// ---------------------------------------------------------
 function getSavedOrderDetailsMap() {
   try {
     var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Orders");
     var data = sheet.getDataRange().getValues();
     var map = {};
     for (var i = 1; i < data.length; i++) {
-      map[String(data[i][1])] = { name: data[i][2], phone: String(data[i][3]), address: data[i][4], amount: data[i][5], note: data[i][6], status: data[i][7], invoice: data[i][8] };
+      map[String(data[i][1])] = { 
+         name: data[i][2], 
+         phone: String(data[i][3]), 
+         address: data[i][4], 
+         amount: data[i][5], 
+         note: data[i][6], 
+         status: data[i][7], 
+         invoice: data[i][8] 
+      };
     }
     return map;
-  } catch (e) { return {}; }
+  } catch (e) { 
+    return {};
+  }
 }
 
 function updateSheetCell(orderId, colIndex, value) {
@@ -569,11 +605,9 @@ function handleMarkShopifyPaid(e) {
     var amountToCapture = order.current_total_price ? order.current_total_price : order.total_price;
     var transUrl = "orders/" + realId + "/transactions.json";
     var payload = { "transaction": { "kind": "sale", "gateway": "manual", "status": "success", "amount": amountToCapture } };
-    
     var transRes = fetchShopifySafe(transUrl, "post", payload);
     if (JSON.parse(transRes.getContentText()).transaction) return sendJSON({status: "success", message: "Marked Paid"});
     
-    // Try capture if sale fails
     payload = { "transaction": { "kind": "capture", "gateway": "manual", "status": "success", "amount": amountToCapture } };
     var captureRes = fetchShopifySafe(transUrl, "post", payload);
     if (JSON.parse(captureRes.getContentText()).transaction) return sendJSON({status: "success", message: "Captured & Paid"});
@@ -586,7 +620,7 @@ function handleCancelShopifyOrder(e) {
   var realId = findShopifyOrderId(p.orderId);
   if (!realId) return sendJSON({status: "error", message: "Not found"});
   var url = "orders/" + realId + "/cancel.json";
-  var json = JSON.parse(fetchShopifySafe(url, "post", { "email": false, "restock": false }).getContentText());
+  var json = JSON.parse(fetchShopifySafe(url, "post", { "email": true, "restock": false }).getContentText());
   if (json.order || (json.errors && JSON.stringify(json.errors).indexOf('prior') > -1)) {
      updateSheetCell(p.orderId, 8, "Void");
      if (p.note) updateSheetCell(p.orderId, 7, p.note);
@@ -636,46 +670,63 @@ function handleUpdateSheetOrder(e) {
 function handleUpdateCustomerOnly(e) {
   var p = e.parameter;
   var ss = SpreadsheetApp.openById(SHEET_ID); var cs = ss.getSheetByName("Customers"); var data = cs.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) { if (String(data[i][1]) == String(p.cNumber)) { cs.getRange(i+1, 1).setValue(p.cName); cs.getRange(i+1, 3).setValue(p.cAddress);
-  return sendJSON({status:"success"}); } }
+  for (var i = 1; i < data.length; i++) { if (String(data[i][1]) == String(p.cNumber)) { cs.getRange(i+1, 1).setValue(p.cName); cs.getRange(i+1, 3).setValue(p.cAddress); return sendJSON({status:"success"}); } }
   return sendJSON({status:"error"});
 }
 
 function handleUpdateOrderCustomer(e) {
   var p = e.parameter; var ss = SpreadsheetApp.openById(SHEET_ID);
   var sheet = ss.getSheetByName("Orders"); var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) { if (String(data[i][1]) == String(p.oID)) { var r = i + 1;
-  sheet.getRange(r, 3).setValue(p.name); sheet.getRange(r, 4).setValue("'" + p.phone); sheet.getRange(r, 5).setValue(p.address); return sendJSON({status:"success"}); } }
+  for (var i = 1; i < data.length; i++) { if (String(data[i][1]) == String(p.oID)) { var r = i + 1; sheet.getRange(r, 3).setValue(p.name); sheet.getRange(r, 4).setValue("'" + p.phone); sheet.getRange(r, 5).setValue(p.address); return sendJSON({status:"success"}); } }
   return sendJSON({status:"error"});
 }
 
+// ---------------------------------------------------------
+// ASYNC PARALLEL IMAGE FETCHING (SUPER FAST)
+// ---------------------------------------------------------
 function fetchImagesForOrders(orders) {
   try {
-    var productIds = []; orders.forEach(function(o) { if(o.line_items) o.line_items.forEach(function(i) { if(i.product_id) productIds.push(i.product_id); }); });
+    var productIds = [];
+    orders.forEach(function(o) { if(o.line_items) o.line_items.forEach(function(i) { if(i.product_id) productIds.push(i.product_id); }); });
     var uniqueIds = [...new Set(productIds)];
     var map = {};
-    
-    // Batch process in chunks of 50 to avoid URL length limit
+
     if (uniqueIds.length > 0) {
+      var requests = [];
       for (var i = 0; i < uniqueIds.length; i += 50) {
         var chunk = uniqueIds.slice(i, i + 50).join(",");
-        var url = "products.json?ids=" + chunk + "&fields=id,images,product_type";
-        var res = fetchShopifySafe(url, "get");
-        JSON.parse(res.getContentText()).products.forEach(function(p){ map[p.id] = { src: (p.images.length>0?p.images[0].src:""), type: p.product_type }; });
-        Utilities.sleep(200); // Small pause between batches
+        var endpoint = "https://" + SHOP_DOMAIN + "/admin/api/" + API_VERSION + "/products.json?ids=" + chunk + "&fields=id,images,product_type";
+        requests.push({
+          url: endpoint,
+          method: "get",
+          headers: { 
+            "X-Shopify-Access-Token": ACCESS_TOKEN,
+            "Content-Type": "application/json"
+          },
+          muteHttpExceptions: true
+        });
       }
+
+      var responses = UrlFetchApp.fetchAll(requests);
+
+      responses.forEach(function(res) {
+         if (res.getResponseCode() === 200) {
+            var json = JSON.parse(res.getContentText());
+            json.products.forEach(function(p){ 
+               map[p.id] = { src: (p.images.length>0 ? p.images[0].src : ""), type: p.product_type }; 
+            });
+         }
+      });
     }
     return map;
-  } catch(e) { return {}; }
+  } catch(e) { 
+    return {}; 
+  }
 }
 
 function fetchImagesByOrderIds(orderIds) {
   try {
-    // This is expensive, better to cache or use direct calls. 
-    // Using a safer bulk fetch approach
     var bulkUrl = "orders.json?status=any&limit=50&ids=" + orderIds.join(",") + "&fields=id,order_number,line_items";
-    // NOTE: If orderIds > 50, this needs chunking logic, but handleGetSheetOrders passes 50 max.
-    
     var ordJson = JSON.parse(fetchShopifySafe(bulkUrl, "get").getContentText());
     if (!ordJson.orders) return {};
     
@@ -692,15 +743,22 @@ function fetchImagesByOrderIds(orderIds) {
         });
       }
     });
-
+    
     var uniqueProdIds = [...new Set(productIds)]; var pImgs = {};
     if (uniqueProdIds.length > 0) {
+       var requests = [];
        for (var i = 0; i < uniqueProdIds.length; i += 50) {
           var chunk = uniqueProdIds.slice(i, i + 50).join(",");
-          var prodUrl = "products.json?ids=" + chunk + "&fields=id,images,product_type";
-          var res = fetchShopifySafe(prodUrl, "get");
-          JSON.parse(res.getContentText()).products.forEach(function(p) { pImgs[p.id] = { src: (p.images.length>0?p.images[0].src:""), type: p.product_type }; });
+          var prodUrl = "https://" + SHOP_DOMAIN + "/admin/api/" + API_VERSION + "/products.json?ids=" + chunk + "&fields=id,images,product_type";
+          requests.push({ url: prodUrl, method: "get", headers: { "X-Shopify-Access-Token": ACCESS_TOKEN, "Content-Type": "application/json" }, muteHttpExceptions: true });
        }
+       
+       var responses = UrlFetchApp.fetchAll(requests);
+       responses.forEach(function(res) {
+          if (res.getResponseCode() === 200) {
+             JSON.parse(res.getContentText()).products.forEach(function(p) { pImgs[p.id] = { src: (p.images.length>0?p.images[0].src:""), type: p.product_type }; });
+          }
+       });
     }
     
     var finalMap = {};
