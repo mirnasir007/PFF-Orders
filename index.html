@@ -761,6 +761,11 @@
                 let isListed = !!saved;
                 let statusBadge = '';
                 let isOrderVoid = false;
+
+                let isPreOrder = false;
+                if (order.tags && (String(order.tags).toLowerCase().includes('preorder') || String(order.tags).toLowerCase().includes('pre-order'))) {
+                    isPreOrder = true;
+                }
                 
                 // Determine Amount (Saved or Shopify)
                 let displayAmount = (order.current_total_price) ? order.current_total_price : order.total_price;
@@ -798,6 +803,12 @@
                          }
                          if(item.product_id && images[item.product_id]) {
                              let imgData = images[item.product_id];
+                             if (typeof imgData === 'object' && imgData.tags) {
+                                 let pTags = String(imgData.tags).toLowerCase();
+                                 if (pTags.includes('preorder') || pTags.includes('pre-order')) {
+                                     isPreOrder = true;
+                                 }
+                             }
                              let imgSrc = (typeof imgData === 'object' && imgData.src) ? imgData.src : imgData;
                              let pType = (typeof imgData === 'object' && imgData.type) ? imgData.type : '';
                              let pSku = (typeof imgData === 'object' && imgData.sku) ? imgData.sku : (item.sku || '');
@@ -927,13 +938,16 @@
                 let dObj = new Date(order.created_at);
                 let dateStr = dObj.toLocaleDateString('en-GB') + ' <br><span style="font-size:10px; color:#999; font-weight: 500;">' + dObj.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit', hour12: true}) + '</span>';
 
+                let preOrderBadge = isPreOrder ? `<div style="color: #d82c0d; font-size: 11px; font-weight: 700; margin-top: 4px; margin-bottom: 2px; display: inline-block; border: 1px dashed #d82c0d; padding: 2px 6px; border-radius: 4px; background: #fff5f5; width: fit-content;">PRE-ORDER</div>` : '';
+
                 let card = `
                 <div class="order-card">
                     <div class="order-header">
                         <div class="header-left">
                             <div class="info-block">
                                 <div class="order-id">#${id} ${editBtn}</div>
-                                <div class="order-date">${dateStr}</div>
+                                ${preOrderBadge}
+                                <div class="order-date" style="margin-top: 2px;">${dateStr}</div>
                             </div>
                             ${custHtml}
                         </div>
