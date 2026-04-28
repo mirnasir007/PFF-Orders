@@ -547,7 +547,7 @@
         window.onload = function() {
             applyFilters();
             requestNotificationPermission(); // Ask user for popup permission
-            startOrderPolling(); // Start checking loop
+            startSSEConnection(); // Start real-time connection
             
             document.getElementById('mobileMenuBtn').addEventListener('click', function() {
                 document.getElementById('filterOptions').classList.toggle('show');
@@ -581,7 +581,7 @@
             pImg.addEventListener('touchend', handleTouchEnd);
         };
         
-        // --- NEW: NOTIFICATION & POLLING LOGIC ---
+        // --- SSE REAL-TIME NOTIFICATION LOGIC ---
         function requestNotificationPermission() {
             if ("Notification" in window) {
                 if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -590,36 +590,26 @@
             }
         }
 
-        function startOrderPolling() {
-            // Check every 60 seconds (60000 ms)
-            setInterval(async () => {
+        function startSSEConnection() {
+            const streamUrl = SCRIPT_URL.replace('/api', '/stream');
+            const eventSource = new EventSource(streamUrl);
+
+            eventSource.onmessage = function(event) {
                 try {
-                    let url = SCRIPT_URL + `?action=getLatestOrderId`;
-                    let res = await fetch(url);
-                    let data = await res.json();
-                    
-                    if (data.status === 'success' && data.latest) {
-                        let currentLatestId = String(data.latest);
-                        
-                        // First load e just current ID ta save rakhbo
-                        if (lastKnownOrderId === null) {
-                            lastKnownOrderId = currentLatestId;
-                            return;
-                        }
-                        
-                        // Notun order asle (Order ID change hole)
-                        if (currentLatestId !== lastKnownOrderId) {
-                            lastKnownOrderId = currentLatestId; 
-                            playNotificationAlert(currentLatestId, data.amount);
-                            
-                            // Auto refresh kore dashboard update kore dibe
-                            applyFilters(); 
-                        }
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'new_order') {
+                        playNotificationAlert(data.orderId, data.amount);
+                        applyFilters(); 
                     }
                 } catch(e) {
-                    console.log("Polling error: ", e);
+                    console.log("SSE parsing error", e);
                 }
-            }, 60000); 
+            };
+
+            eventSource.onerror = function() {
+                eventSource.close();
+                setTimeout(startSSEConnection, 5000); 
+            };
         }
 
         function playNotificationAlert(orderId, amount) {
