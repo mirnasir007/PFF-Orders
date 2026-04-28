@@ -363,7 +363,7 @@
             </div>
             <div style="text-align: right; margin-top: 15px;">
                 <button class="btn btn-secondary" onclick="closeModal('editOrderModal')">Cancel</button>
-                <button class="btn" onclick="saveOrderEdits()">Save Changes (Sync Shopify)</button>
+                <button class="btn" id="btnSaveOrderEdits" onclick="saveOrderEdits()" style="display: inline-flex; align-items: center; justify-content: center; min-width: 80px;">Save</button>
             </div>
         </div>
     </div>
@@ -504,14 +504,14 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEf-503JgVRQGLSaFFz8CHjSbJlmTX-UNnyjUiS6yyjk-JGqavucbmnnc_do9C69rb/exec"; 
+        const SCRIPT_URL = "https://pff-orders-backend.onrender.com/api"; 
         
         // --- COURIER CHECKER API URL ---
-        const COURIER_API_URL = "https://script.google.com/macros/s/AKfycbzC2erjEesZ0iNytdujMJRXy9IVwbzwb9iOLMMWoN30Tgmo6jkqMEo8JXtdf1KX6jaN/exec"; 
+        const COURIER_API_URL = "https://pff-orders-backend.onrender.com/courier"; 
         // -------------------------------------------------------------------
 
         // --- GLOBAL STOCK API & STORES ---
-        const STOCK_GAS_URL = "https://script.google.com/macros/s/AKfycbzSBmvEFfpXyEkppQgCaGHdeGHCoveJpVfAr1c7mGSvyFK8m4h54SLLLpGdzAx-JVuo/exec"; 
+        const STOCK_GAS_URL = "https://pff-orders-backend.onrender.com/api"; 
         const stockStores = [
           {code: "100010001", name: "PFF PREMIUM_WH"},
           {code: "100010004", name: "PFF PREMIUM E-STORE"},
@@ -775,9 +775,18 @@
 
                 if (isListed) {
                     let s = saved.status || "Pending";
+                    
+                    // --- AUTO SYNC SHOPIFY PAID TO SHEET ---
+                    if (order.financial_status === 'paid' && s !== 'Paid') {
+                        s = "Paid"; 
+                        saved.status = "Paid"; // Update local cache
+                        fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=Paid`).catch(e=>console.log(e));
+                    }
+
                     let sClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
                                  s.toLowerCase().includes('courier') ? 'status-courier' :
-                                 s.toLowerCase().includes('void') ? 'status-void' : 'status-pending';
+                                 s.toLowerCase().includes('void') ? 'status-void' : 
+                                 s.toLowerCase().includes('paid') ? 'status-paid' : 'status-pending';
                     statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}')">${s}</span>`;
                     if(s.toLowerCase().includes('void')) isOrderVoid = true;
                 } else {
@@ -1144,6 +1153,9 @@ function updatePreviewContent() {
             try {
                 const response = await fetch(STOCK_GAS_URL, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         action: "check_bulk",
                         barcodes: [sku],
@@ -1466,8 +1478,8 @@ function updatePreviewContent() {
         async function saveOrderEdits() {
             let orderId = document.getElementById('editOrderId').value;
             let finalAmount = document.getElementById('editFinalAmount').value;
-            let btn = document.querySelector('#editOrderModal .btn:last-child');
-            btn.innerText = "Syncing Shopify..."; btn.disabled = true;
+            let btn = document.getElementById('btnSaveOrderEdits') || document.querySelector('#editOrderModal .btn:last-child');
+            btn.innerHTML = '<span class="gs-spinner"></span> Saving...'; btn.disabled = true;
             try {
                 let additions = []; let removals = [];
                 currentEditOrderItems.forEach(item => {
@@ -1477,7 +1489,7 @@ function updatePreviewContent() {
                 if(additions.length > 0 || removals.length > 0) {
                      let res = await fetch(`${SCRIPT_URL}?action=editShopifyOrder&orderId=${orderId}&additions=${JSON.stringify(additions)}&removals=${JSON.stringify(removals)}`);
                      let data = await res.json();
-                     if(data.status === 'error') { showToast("Shopify Error: " + data.message); btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; return; }
+                     if(data.status === 'error') { showToast("Shopify Error: " + data.message); btn.innerHTML = "Save"; btn.disabled = false; return; }
                 }
                 await fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${orderId}&type=amount&value=${finalAmount}`);
                 for(let item of currentEditOrderItems) {
@@ -1487,7 +1499,7 @@ function updatePreviewContent() {
                 }
                 showToast("Order Updated & Synced"); closeModal('editOrderModal'); applyFilters();
             } catch(e) { showToast("Connection Error: " + e.message); } 
-            finally { btn.innerText = "Save Changes (Sync Shopify)"; btn.disabled = false; }
+            finally { btn.innerHTML = "Save"; btn.disabled = false; }
         }
 
         function openAddModal(id, date, amount) {
@@ -1782,5 +1794,3 @@ function updatePreviewContent() {
     </script>
 </body>
 </html>
-
-
