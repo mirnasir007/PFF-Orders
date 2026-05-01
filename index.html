@@ -598,8 +598,13 @@
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'new_order') {
-                        playNotificationAlert(data.orderId, data.amount);
-                        applyFilters(); 
+                        if (!lastKnownOrderId || parseInt(data.orderId) > parseInt(lastKnownOrderId)) {
+                            lastKnownOrderId = data.orderId;
+                            playNotificationAlert(data.orderId, data.amount);
+                            applyFilters(); 
+                        } else {
+                            applyFilters(); 
+                        }
                     }
                 } catch(e) {
                     console.log("SSE parsing error", e);
@@ -744,6 +749,13 @@
             gl_images = images; 
             
             if(!orders || orders.length === 0) { container.innerHTML = '<div style="padding:20px;text-align:center;">No orders found.</div>'; return; }
+
+            if (orders.length > 0) {
+                let currentMaxId = Math.max(...orders.map(o => parseInt(o.order_number)));
+                if (!lastKnownOrderId || currentMaxId > parseInt(lastKnownOrderId)) {
+                    lastKnownOrderId = String(currentMaxId);
+                }
+            }
 
             orders.forEach(order => {
                 let id = String(order.order_number);
