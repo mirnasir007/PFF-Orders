@@ -409,11 +409,15 @@
             <span class="modal-close" onclick="closeModal('fulfillModal')">&times;</span>
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:15px;">
                <h3 style="margin:0;">Fulfill Order</h3>
-               <input type="text" id="consignmentInput" placeholder="Paste Consignment ID" style="padding:6px; font-size:12px; width:140px; border:1px solid #babfc3; border-radius:4px; margin-right:30px;" oninput="autoFillPathao()">
+               <div style="display:flex; gap: 5px; margin-right:30px;">
+                   <input type="text" id="consignmentInput" placeholder="Paste Consignment ID" style="padding:6px; font-size:12px; width:140px; border:1px solid #babfc3; border-radius:4px;" oninput="autoFillPathao()">
+                   <button class="btn btn-sm btn-secondary" id="btnAutoFetch" onclick="autoFetchCourierLink()" style="height: 30px; display: flex; align-items: center; white-space: nowrap;">Auto Link</button>
+               </div>
             </div>
             
             <input type="hidden" id="fOrderId">
             <input type="hidden" id="fOrderPhone">
+            <input type="hidden" id="fOrderInvoice">
             
             <div class="form-group"><label>Tracking Number</label><input type="text" id="trackNum"></div>
             <div class="form-group"><label>Tracking Link</label><input type="text" id="trackLink"></div>
@@ -938,8 +942,8 @@
                 if (isListed && saved.status) {
                     let sLower = saved.status.toLowerCase();
                     if (sLower.includes('product entry') && !sLower.includes('courier')) {
-                        // UPDATED: Pass phone number to Fulfill Modal
-                        extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}', '${saved.phone}')">Fulfill</button>`;
+                        // UPDATED: Pass phone number and invoice to Fulfill Modal
+                        extraActions += `<button class="btn btn-sm" style="margin-top:5px;" onclick="openFulfillModal('${id}', '${saved.phone}', '${saved.invoice || ""}')">Fulfill</button>`;
                     }
                 }
                 
@@ -1709,13 +1713,69 @@ function updatePreviewContent() {
         document.getElementById('confirmBtnAction').onclick = function() { if(pendingConfirmAction) pendingConfirmAction(); closeModal('confirmModal'); };
         
         // --- UPDATED: Open Fulfill Modal ---
-        function openFulfillModal(id, phone) {
+        function openFulfillModal(id, phone, invoice) {
              document.getElementById('fOrderId').value = id; 
              document.getElementById('fOrderPhone').value = phone || ""; // Store phone
+             document.getElementById('fOrderInvoice').value = invoice || ""; // Store invoice
              document.getElementById('trackNum').value = ''; 
              document.getElementById('trackLink').value = ''; 
              document.getElementById('consignmentInput').value = ''; // Reset consignment input
+             
+             let btn = document.getElementById('btnAutoFetch');
+             if(btn) {
+                 btn.innerText = "Auto Link";
+                 btn.disabled = false;
+             }
+             
              document.getElementById('fulfillModal').style.display = 'flex';
+        }
+
+        async function autoFetchCourierLink() {
+            let invoice = document.getElementById('fOrderInvoice').value;
+            let phone = document.getElementById('fOrderPhone').value;
+            let btn = document.getElementById('btnAutoFetch');
+            
+            if (!invoice) {
+                showToast("No invoice number found!");
+                return;
+            }
+
+            btn.innerText = "Searching...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`https://all-deliveries-overview-backend.onrender.com/api/track/${encodeURIComponent(invoice)}`);
+                
+                if (!res.ok) {
+                     showToast("Data Not Found");
+                     return;
+                }
+
+                const data = await res.json();
+
+                if (data.status === 'success' && data.parcel_info && data.parcel_info.length > 0) {
+                    let parcel = data.parcel_info[0];
+                    let cId = parcel.consignment_id;
+                    let merchant = parcel.source_merchant; 
+                    
+                    document.getElementById('trackNum').value = cId;
+                    
+                    if (merchant === 'Bahok Courier') {
+                        let safeId = String(cId).replace('BHK-4691-', '');
+                        document.getElementById('trackLink').value = `https://bahokcourier.com/log.php?sku=BHK-4691-${safeId}`;
+                    } else {
+                        document.getElementById('trackLink').value = `https://merchant.pathao.com/tracking?consignment_id=${cId}&phone=${phone}`;
+                    }
+                    showToast("Tracking Link Generated!");
+                } else {
+                    showToast("Data Not Found");
+                }
+            } catch (error) {
+                showToast("Data Not Found");
+            } finally {
+                btn.innerText = "Auto Link";
+                btn.disabled = false;
+            }
         }
 
         // --- NEW: Auto-fill Pathao Link Logic ---
