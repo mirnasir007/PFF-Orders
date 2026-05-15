@@ -1224,21 +1224,23 @@ function updatePreviewContent() {
                 listDiv.innerHTML = '';
                 
                 if(data.status === 'success' && data.variants) {
-                    let currentViewedVariant = currentPreviewImages[currentPreviewIndex].variant || "";
-                    let targetVariant = data.variants.find(v => v.title === currentViewedVariant || (currentViewedVariant === "" && v.title === "Default Title")) || data.variants[0];
-                    
-                    if (targetVariant) {
+                    if (data.variants && data.variants.length > 0) {
                         let availParts = [];
-                        if (targetVariant.qty > 0) availParts.push(`Admin(${targetVariant.qty})`);
-                        if (targetVariant.dhanmondi > 0) availParts.push(`Dhanmondi(${targetVariant.dhanmondi})`);
-                        if (targetVariant.banani > 0) availParts.push(`Banani(${targetVariant.banani})`);
-                        if (targetVariant.uttara > 0) availParts.push(`Uttara(${targetVariant.uttara})`);
-                        
                         let commParts = [];
-                        if (targetVariant.committed_qty > 0) commParts.push(`Admin(${targetVariant.committed_qty})`);
-                        if (targetVariant.committed_dhanmondi > 0) commParts.push(`Dhanmondi(${targetVariant.committed_dhanmondi})`);
-                        if (targetVariant.committed_banani > 0) commParts.push(`Banani(${targetVariant.committed_banani})`);
-                        if (targetVariant.committed_uttara > 0) commParts.push(`Uttara(${targetVariant.committed_uttara})`);
+
+                        data.variants.forEach(v => {
+                            let vTag = (v.title === "Default Title" || !v.title) ? "" : `,${v.title}`;
+                            
+                            if (Number(v.qty) > 0) availParts.push(`Admin${vTag} (${v.qty})`);
+                            if (Number(v.dhanmondi) > 0) availParts.push(`Dhanmondi${vTag} (${v.dhanmondi})`);
+                            if (Number(v.banani) > 0) availParts.push(`Banani${vTag} (${v.banani})`);
+                            if (Number(v.uttara) > 0) availParts.push(`Uttara${vTag} (${v.uttara})`);
+                            
+                            if (Number(v.committed_qty) > 0) commParts.push(`Admin${vTag} (${v.committed_qty})`);
+                            if (Number(v.committed_dhanmondi) > 0) commParts.push(`Dhanmondi${vTag} (${v.committed_dhanmondi})`);
+                            if (Number(v.committed_banani) > 0) commParts.push(`Banani${vTag} (${v.committed_banani})`);
+                            if (Number(v.committed_uttara) > 0) commParts.push(`Uttara${vTag} (${v.committed_uttara})`);
+                        });
                         
                         let availStr = availParts.length > 0 ? availParts.join(', ') : 'N/A';
                         let commStr = commParts.length > 0 ? commParts.join(', ') : 'N/A';
@@ -1246,11 +1248,11 @@ function updatePreviewContent() {
                         summaryDiv.innerHTML = `
                             <div style="color: #4effcd; margin-bottom: 4px; display: flex; justify-content: space-between; width: 100%;">
                                 <span style="margin-right: 8px;">Available :</span> 
-                                <span style="color:#fff; text-align: right;">${availStr}</span>
+                                <span style="color:#fff; text-align: right; flex: 1; word-break: break-word;">${availStr}</span>
                             </div>
                             <div style="color: #ffeb3b; display: flex; justify-content: space-between; width: 100%;">
                                 <span style="margin-right: 8px;">Committed :</span> 
-                                <span style="color:#fff; text-align: right;">${commStr}</span>
+                                <span style="color:#fff; text-align: right; flex: 1; word-break: break-word;">${commStr}</span>
                             </div>
                         `;
                     } else {
