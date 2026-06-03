@@ -284,10 +284,7 @@
                     <button class="btn" onclick="applyFilters()">Filter</button>
                     <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
                     <div id="entryAmountDisplay" class="entry-amount-display">Entry Amount: 0</div>
-                    <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
-                        <button class="btn btn-export" style="margin-left: 0;" onclick="downloadExcel()">⬇️ Excel</button>
-                        <button id="waConnectBtn" class="btn btn-export" style="background: #25D366; border-color: #128C7E; margin-left: 0;" onclick="openWaQrModal()">💬 Connect WA</button>
-                    </div>
+                    <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
                 </div>
             </div>
 
@@ -466,18 +463,6 @@
         </div>
     </div>
 
-    <div id="waEditModal" class="modal" style="z-index: 1500;">
-        <div class="modal-box" style="width: 350px;">
-            <h3 style="margin-top: 0; margin-bottom: 10px; color: #008060; font-size: 16px;">Edit Message</h3>
-            <input type="hidden" id="editWaMsgId">
-            <textarea id="editWaMsgInput" rows="4" style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: none; font-family: inherit; font-size: 13px;"></textarea>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 15px;">
-                <button class="btn btn-secondary" onclick="closeModal('waEditModal')">Cancel</button>
-                <button class="btn" id="btnSaveWaEdit" onclick="submitWaEdit()">Save</button>
-            </div>
-        </div>
-    </div>
-
     <div id="globalStockModal" class="modal" style="z-index: 2500;" onclick="if(event.target === this) closeModal('globalStockModal')">
         <div class="modal-box" style="width: 350px; max-width: 95%;">
             <span class="modal-close" onclick="closeModal('globalStockModal')">&times;</span>
@@ -522,50 +507,8 @@
         </div>
     </div>
 
-    <div id="waQrModal" class="modal">
-        <div class="modal-box" style="text-align: center; width: 350px;">
-            <span class="modal-close" onclick="closeModal('waQrModal')">&times;</span>
-            <h3 style="color: #25D366; margin-top: 0;">Connect WhatsApp</h3>
-            <p style="font-size: 13px; color: #666;">Scan this QR code with your WhatsApp app.</p>
-            <div id="waQrContainer" style="padding: 20px; min-height: 200px; display: flex; justify-content: center; align-items: center;">
-                <div class="loading-spinner"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="waChatModal" class="modal">
-        <div class="modal-box" style="width: 400px; height: 550px; display: flex; flex-direction: column;">
-            <span class="modal-close" onclick="closeModal('waChatModal')">&times;</span>
-            <h3 style="color: #25D366; margin-top: 0; margin-bottom: 5px;" id="waChatTitle">WhatsApp Chat</h3>
-            
-            <div style="display: flex; gap: 5px; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                <button class="btn btn-sm" style="background: #008060; font-size: 12px; flex: 1;" onclick="fillWaTemplate('confirm')">✅ Confirm Msg</button>
-                <button class="btn btn-sm" style="background: #d82c0d; font-size: 12px; flex: 1;" onclick="fillWaTemplate('cancel')">❌ Cancel Msg</button>
-            </div>
-
-            <input type="hidden" id="waChatPhone">
-            <input type="hidden" id="waChatOrderId">
-
-            <div id="waChatHistory" style="flex: 1; overflow-y: auto; background: #e5ddd5; padding: 10px; border-radius: 4px; display: flex; flex-direction: column; gap: 10px;">
-            </div>
-            
-            <div id="waChatPreview" style="display: none; padding: 8px; background: #e3f1df; border-radius: 4px; margin-top: 5px; font-size: 12px; font-weight: bold; color: #008060; border: 1px solid #c4f5cd;">
-                📸 Image Ready to Send <span style="color: #d82c0d; cursor: pointer; float: right;" onclick="clearWaChatFile()">✖ Remove</span>
-            </div>
-
-            <div style="display: flex; gap: 5px; margin-top: 10px; align-items: flex-end;">
-                <label style="cursor: pointer; font-size: 20px; margin-bottom: 5px;" title="Attach Image">
-                    📎 <input type="file" id="waChatFile" style="display: none;" accept="image/*" onchange="handleWaFileSelect()">
-                </label>
-                <textarea id="waChatInput" placeholder="Type message (Press Enter for line break) or Paste Image..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: none; height: 35px; font-family: inherit; font-size: 13px;"></textarea>
-                <button class="btn" style="background: #25D366; margin-bottom: 2px;" onclick="sendWaMessage()">Send</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const SCRIPT_URL = "https://pff-orders-backend.onrender.com/api"; 
-        const WA_BACKEND_URL = "https://pff-order-whatsapp-back-end.onrender.com"; 
         
         // --- COURIER CHECKER API URL ---
         const COURIER_API_URL = "https://pff-orders-backend.onrender.com/courier"; 
@@ -609,7 +552,6 @@
             applyFilters();
             requestNotificationPermission(); // Ask user for popup permission
             startSSEConnection(); // Start real-time connection
-            checkWaStatus();
             
             document.getElementById('mobileMenuBtn').addEventListener('click', function() {
                 document.getElementById('filterOptions').classList.toggle('show');
@@ -851,7 +793,7 @@
                                  s.toLowerCase().includes('courier') ? 'status-courier' :
                                  s.toLowerCase().includes('void') ? 'status-void' : 
                                  s.toLowerCase().includes('paid') ? 'status-paid' : 'status-pending';
-                    statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}', '${saved.phone}')">${s}</span>`;
+                    statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}')">${s}</span>`;
                     if(s.toLowerCase().includes('void')) isOrderVoid = true;
                 } else {
                     let s = order.financial_status;
@@ -974,7 +916,6 @@
                             
                             <span class="courier-wrapper">
                                 <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Pathao Check</button>
-                                <button class="btn-check-cust" style="color: #0b5c30; border-color: #25D366; margin-left: 5px;" onclick="openWaChatModal('${saved.phone}', '${saved.name.replace(/'/g, "\\'")}', '${id}')">💬 Chat</button>
                                 <div id="courier-res-${id}" class="courier-popover"></div>
                             </span>
                         </div>
@@ -1630,15 +1571,8 @@ function updatePreviewContent() {
                  await fetch(SCRIPT_URL + '?' + new URLSearchParams(p).toString()); showToast("Saved to List"); closeModal('addModal'); applyFilters();
              } finally { btn.innerText = "Save to List"; }
         }
-        function openStatusModal(id, cur, phone) {
-            document.getElementById('statusOrderId').value = id; 
-            if(!document.getElementById('statusOrderPhone')) {
-                let hiddenInp = document.createElement('input');
-                hiddenInp.type = 'hidden'; hiddenInp.id = 'statusOrderPhone';
-                document.getElementById('statusModal').appendChild(hiddenInp);
-            }
-            document.getElementById('statusOrderPhone').value = phone || "";
-            document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
+        function openStatusModal(id, cur) {
+            document.getElementById('statusOrderId').value = id; document.querySelectorAll('.st-chk').forEach(c => c.checked = false);
             document.getElementById('chkProductEntry').checked = false; document.getElementById('chkVoid').checked = false;
             if(cur) { let parts = cur.split(', '); document.querySelectorAll('.st-chk').forEach(c => { if(parts.includes(c.value)) c.checked = true; }); }
             document.getElementById('statusModal').style.display = 'flex';
@@ -1652,13 +1586,9 @@ function updatePreviewContent() {
                     let res = await fetch(`${SCRIPT_URL}?action=markShopifyPaid&orderId=${id}`); let data = await res.json();
                     if(data.status === 'error') { showToast(data.message); updateBtn.innerText = "Update"; return; }
                 }
-                if(document.getElementById('chkVoid').checked) { 
-                    closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', 0, false); return; 
-                }
+                if(document.getElementById('chkVoid').checked) { closeModal('statusModal'); isVoiding = true; openNoteModal(id, '', 0, false); return; }
                 if(document.getElementById('chkProductEntry').checked) { closeModal('statusModal'); pendingStatusUpdate = { id: id, statuses: statuses }; openInvoiceModal(id, ''); return; }
-                if(statuses.length > 0) { 
-                    await updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); 
-                }
+                if(statuses.length > 0) { await updateSheet(id, 'status', statuses.join(', ')); closeModal('statusModal'); }
             } catch(e) { showToast("Connection Error"); } finally { updateBtn.innerText = "Update"; }
         }
         
@@ -1924,304 +1854,6 @@ function updatePreviewContent() {
                 if(data.status === 'success') { showToast("Customer info updated"); closeModal('editCustomerModal'); applyFilters(); } 
                 else { showToast("Error updating info"); }
             } catch(e) { showToast("Connection Error"); } finally { btn.innerText = "Save Changes"; }
-        }
-
-        async function checkWaStatus() {
-            try {
-                let res = await fetch(`${WA_BACKEND_URL}/status?t=${new Date().getTime()}`, { cache: "no-store" });
-                let data = await res.json();
-                let btn = document.getElementById('waConnectBtn');
-                if (data.connected) {
-                    btn.innerHTML = "✅ Connected WA";
-                    btn.onclick = promptWaLogout;
-                } else {
-                    btn.innerHTML = "💬 Connect WA";
-                    btn.onclick = openWaQrModal;
-                }
-            } catch (e) {
-                console.log("WA API Not Running.");
-            }
-        }
-
-        function promptWaLogout() {
-            openConfirmModal("Are you sure you want to Logout from WhatsApp?", async function() {
-                try {
-                    await fetch(`${WA_BACKEND_URL}/logout`, { method: 'POST' });
-                    showToast("WhatsApp Logged Out!");
-                    checkWaStatus(); 
-                } catch(e) {
-                    showToast("Logout failed");
-                }
-            });
-        }
-
-        async function openWaQrModal() {
-            document.getElementById('waQrModal').style.display = 'flex';
-            document.getElementById('waQrContainer').innerHTML = '<div class="loading-spinner"></div> Generating QR...';
-            
-            // Auto check QR status every 3 seconds
-            let qrInterval = setInterval(async () => {
-                if (document.getElementById('waQrModal').style.display === 'none') {
-                    clearInterval(qrInterval);
-                    return;
-                }
-                try {
-                    let res = await fetch(`${WA_BACKEND_URL}/get-qr?t=${new Date().getTime()}`, { cache: "no-store" });
-                    let data = await res.json();
-                    if (data.status === 'connected') {
-                        clearInterval(qrInterval);
-                        closeModal('waQrModal');
-                        checkWaStatus();
-                        showToast("WhatsApp Connected Successfully!");
-                    } else if (data.qr) {
-                        document.getElementById('waQrContainer').innerHTML = `<img src="${data.qr}" style="width: 250px; height: 250px;">`;
-                    } else {
-                        document.getElementById('waQrContainer').innerHTML = '<div style="color:#008060; font-weight: bold;"><div class="loading-spinner"></div> Authenticating...</div>';
-                    }
-                } catch (e) {
-                    clearInterval(qrInterval);
-                    document.getElementById('waQrContainer').innerHTML = '<div style="color:red;">Failed to connect to Node API.</div>';
-                }
-            }, 3000);
-        }
-
-        function fillWaTemplate(type) {
-            let orderId = document.getElementById('waChatOrderId').value;
-            let input = document.getElementById('waChatInput');
-            if(type === 'confirm') {
-                input.value = `Thank you for shopping with PFF Premium!\n\nYour order #${orderId} has been confirmed successfully. We’ll notify you once it’s shipped.`;
-            } else if (type === 'cancel') {
-                input.value = `Thank you for shopping with PFF Premium!\n\nYour order #${orderId} has been cancelled. For any questions, feel free to contact us. 01772396719`;
-            }
-        }
-
-        function openWaChatModal(phone, name, orderId) {
-            document.getElementById('waChatTitle').innerText = name + " (" + phone + ")";
-            document.getElementById('waChatPhone').value = phone;
-            document.getElementById('waChatOrderId').value = orderId;
-            document.getElementById('waChatInput').value = '';
-            document.getElementById('waChatHistory').innerHTML = '<div style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">Loading chat...</div>';
-            document.getElementById('waChatModal').style.display = 'flex';
-            fetchWaChatHistory(phone);
-        }
-
-        async function fetchWaChatHistory(phone) {
-            try {
-                let res = await fetch(`${WA_BACKEND_URL}/chat-history?phone=${phone}`);
-                let data = await res.json();
-                let historyDiv = document.getElementById('waChatHistory');
-                historyDiv.innerHTML = '';
-                if(data.messages && data.messages.length > 0) {
-                    data.messages.forEach(msg => {
-                        let align = msg.fromMe ? 'flex-end' : 'flex-start';
-                        let bg = msg.fromMe ? '#dcf8c6' : '#fff';
-                        
-                        let contentHtml = '';
-                        if (msg.media && msg.mediaType === 'image') {
-                            let safeMedia = msg.media.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                            contentHtml += `<img src="${msg.media}" style="max-width: 150px; border-radius: 4px; cursor: zoom-in; display: block; margin-bottom: 5px; border: 1px solid #ddd;" onclick="showPreview(['${safeMedia}'], 0); event.stopPropagation();">`;
-                        } else if (msg.media) {
-                            contentHtml += `<div style="font-style: italic; color: #555; margin-bottom: 4px;">📎 [Attachment]</div>`;
-                        }
-                        
-                        if (msg.body) {
-                            if(msg.isRevoked) {
-                                contentHtml += `<div style="white-space: pre-wrap; font-style: italic; color: #666;">${msg.body}</div>`;
-                            } else {
-                                contentHtml += `<div class="wa-msg-text" style="white-space: pre-wrap;">${msg.body}</div>`;
-                            }
-                        }
-
-                        let optionsHtml = '';
-                        let tickHtml = '';
-                        
-                        if (msg.fromMe && !msg.isRevoked) {
-                            if (msg.ack === 1) tickHtml = `<span style="color: #999; font-size: 12px; margin-left: 5px;" title="Sent">✓</span>`;
-                            else if (msg.ack === 2) tickHtml = `<span style="color: #999; font-size: 12px; margin-left: 5px;" title="Delivered">✓✓</span>`;
-                            else if (msg.ack >= 3) tickHtml = `<span style="color: #4fc3f7; font-size: 12px; font-weight: bold; margin-left: 5px;" title="Read">✓✓</span>`;
-                            else tickHtml = `<span style="color: #999; font-size: 10px; margin-left: 5px;" title="Pending">🕒</span>`;
-
-                            let nowSeconds = Math.floor(Date.now() / 1000);
-                            let canEdit = !msg.media && (nowSeconds - msg.timestamp < 900); // 900 seconds = 15 minutes limit
-                            
-                            let editBtnHtml = canEdit ? `<span style="color: #008060; cursor: pointer;" onclick="editWaMsg('${msg.id}', this)">✎ Edit</span>` : '';
-                            
-                            optionsHtml = `
-                            <div style="font-size: 10px; margin-top: 5px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 4px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
-                                ${editBtnHtml}
-                                <span style="color: #d82c0d; cursor: pointer;" onclick="deleteWaMsg('${msg.id}', true)">🗑 Everyone</span>
-                                <span style="color: #888; cursor: pointer;" onclick="deleteWaMsg('${msg.id}', false)">🗑 Me</span>
-                                ${tickHtml}
-                            </div>`;
-                        }
-
-                        historyDiv.innerHTML += `<div id="wa-msg-${msg.id}" style="align-self: ${align}; background: ${bg}; padding: 8px 12px; border-radius: 8px; max-width: 80%; font-size: 13px; word-break: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1);">${contentHtml}${optionsHtml}</div>`;
-                    });
-                } else {
-                    historyDiv.innerHTML = '<div style="text-align: center; color: #666; font-size: 12px; margin-top: 10px;">No messages yet.</div>';
-                }
-                historyDiv.scrollTop = historyDiv.scrollHeight;
-            } catch(e) {
-                document.getElementById('waChatHistory').innerHTML = '<div style="text-align: center; color: red; font-size: 12px; margin-top: 10px;">Failed to load chat history.</div>';
-            }
-        }
-
-        function editWaMsg(msgId, btnElement) {
-            let container = btnElement.parentElement.parentElement;
-            let clone = container.cloneNode(true);
-            let optionsDiv = clone.querySelector('div[style*="font-size: 10px"]');
-            if(optionsDiv) optionsDiv.remove();
-            let imgElements = clone.querySelectorAll('img');
-            imgElements.forEach(img => img.remove());
-            let attachments = clone.querySelectorAll('div[style*="font-style: italic"]'); 
-            if(attachments) attachments.forEach(att => att.remove());
-            
-            let currentText = clone.innerText.trim();
-            
-            document.getElementById('editWaMsgId').value = msgId;
-            document.getElementById('editWaMsgInput').value = currentText;
-            document.getElementById('waEditModal').style.display = 'flex';
-        }
-
-        async function submitWaEdit() {
-            let msgId = document.getElementById('editWaMsgId').value;
-            let newText = document.getElementById('editWaMsgInput').value;
-            let btn = document.getElementById('btnSaveWaEdit');
-            
-            btn.innerText = "Saving...";
-            btn.disabled = true;
-            
-            try {
-                let res = await fetch(`${WA_BACKEND_URL}/edit-message`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messageId: msgId, newText: newText })
-                });
-                let data = await res.json();
-                if(data.success) {
-                    showToast("Message Edited Successfully");
-                    closeModal('waEditModal');
-                    
-                    let msgContainer = document.getElementById('wa-msg-' + msgId);
-                    if (msgContainer) {
-                        let textDiv = msgContainer.querySelector('.wa-msg-text');
-                        if(textDiv) textDiv.innerText = newText;
-                    }
-
-                    setTimeout(() => {
-                        let phone = document.getElementById('waChatPhone').value;
-                        fetchWaChatHistory(phone);
-                    }, 1000);
-                } else {
-                    showToast(data.error || "Cannot edit this message.");
-                }
-            } catch(e) { 
-                showToast("Connection error while editing."); 
-            } finally {
-                btn.innerText = "Save";
-                btn.disabled = false;
-            }
-        }
-
-        function deleteWaMsg(msgId, everyone) {
-            let msgType = everyone ? "Everyone" : "Me";
-            openConfirmModal(`Delete this message for ${msgType}?`, async function() {
-                try {
-                    let res = await fetch(`${WA_BACKEND_URL}/delete-message`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ messageId: msgId, everyone: everyone })
-                    });
-                    let data = await res.json();
-                    if(data.success) {
-                        showToast(everyone ? "Deleted for Everyone" : "Deleted for Me");
-                        
-                        let msgContainer = document.getElementById('wa-msg-' + msgId);
-                        if (msgContainer) {
-                            if (everyone) {
-                                msgContainer.innerHTML = `<div style="white-space: pre-wrap; font-style: italic; color: #666;">🚫 This message was deleted</div>`;
-                            } else {
-                                msgContainer.remove();
-                            }
-                        }
-
-                        setTimeout(() => {
-                            let phone = document.getElementById('waChatPhone').value;
-                            fetchWaChatHistory(phone);
-                        }, 1000);
-                    } else {
-                        showToast(data.error || "Cannot delete message (Too old).");
-                    }
-                } catch(e) { 
-                    showToast("Connection error while deleting."); 
-                }
-            });
-        }
-
-        function handleWaFileSelect() {
-            let fileInput = document.getElementById('waChatFile');
-            if(fileInput.files.length > 0) {
-                document.getElementById('waChatPreview').style.display = 'block';
-            }
-        }
-
-        function clearWaChatFile() {
-            document.getElementById('waChatFile').value = '';
-            document.getElementById('waChatPreview').style.display = 'none';
-        }
-
-        // Paste Image event inside chat input
-        document.getElementById('waChatInput').addEventListener('paste', function(e) {
-            if (e.clipboardData.files && e.clipboardData.files.length > 0) {
-                document.getElementById('waChatFile').files = e.clipboardData.files;
-                handleWaFileSelect();
-            }
-        });
-
-        async function sendWaMessage() {
-            let phone = document.getElementById('waChatPhone').value;
-            let text = document.getElementById('waChatInput').value;
-            let fileInput = document.getElementById('waChatFile');
-            
-            if(!text && fileInput.files.length === 0) return;
-            
-            let formData = new FormData();
-            formData.append('phone', phone);
-            formData.append('message', text);
-            if(fileInput.files.length > 0) {
-                formData.append('file', fileInput.files[0]);
-            }
-
-            document.getElementById('waChatInput').value = '';
-            clearWaChatFile();
-            
-            let historyDiv = document.getElementById('waChatHistory');
-            historyDiv.innerHTML += `<div style="align-self: flex-end; background: #dcf8c6; padding: 8px 12px; border-radius: 8px; max-width: 80%; font-size: 13px; opacity: 0.7;">Sending...</div>`;
-            historyDiv.scrollTop = historyDiv.scrollHeight;
-
-            try {
-            let res = await fetch(`${WA_BACKEND_URL}/send-message`, { method: 'POST', body: formData });
-            let data = await res.json();
-            if (!data.success) {
-                showToast(data.error || "Failed to send message");
-            }
-            fetchWaChatHistory(phone);
-        } catch(e) {
-            showToast("Connection failed to WA server.");
-            fetchWaChatHistory(phone);
-        }
-        }
-
-        async function triggerAutoWaMessage(phone, orderId, type) {
-            try {
-                await fetch(`${WA_BACKEND_URL}/auto-message`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone: phone, orderId: orderId, type: type })
-                });
-            } catch(e) {
-                console.log("Auto WA trigger failed: ", e);
-            }
         }
     </script>
 </body>
