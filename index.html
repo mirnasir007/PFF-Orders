@@ -2200,11 +2200,16 @@ function updatePreviewContent() {
             historyDiv.scrollTop = historyDiv.scrollHeight;
 
             try {
-                await fetch(`${WA_BACKEND_URL}/send-message`, { method: 'POST', body: formData });
-                fetchWaChatHistory(phone);
-            } catch(e) {
-                showToast("Failed to send WA message.");
+            let res = await fetch(`${WA_BACKEND_URL}/send-message`, { method: 'POST', body: formData });
+            let data = await res.json();
+            if (!data.success) {
+                showToast(data.error || "Failed to send message");
             }
+            fetchWaChatHistory(phone);
+        } catch(e) {
+            showToast("Connection failed to WA server.");
+            fetchWaChatHistory(phone);
+        }
         }
 
         async function triggerAutoWaMessage(phone, orderId, type) {
