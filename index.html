@@ -181,7 +181,7 @@
             position: absolute;
             top: 28px;
             left: 0;
-            width: 260px;
+            width: 330px;
             background: white;
             border: 1px solid #e1e3e5;
             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
@@ -213,7 +213,7 @@
         .popover-close:hover { color: #d82c0d; }
 
         /* Dashboard Grid inside Popover */
-        .popover-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .popover-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
         .p-stat-box { background: #f9f9f9; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #eee; }
         .p-stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
         .p-stat-val { font-size: 14px; font-weight: 700; color: #333; }
@@ -561,6 +561,15 @@
                 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
                 if (window.innerWidth <= 768 && !filterOptions.contains(event.target) && !mobileMenuBtn.contains(event.target) && filterOptions.classList.contains('show')) {
                     filterOptions.classList.remove('show');
+                }
+                
+                // Close courier popover if clicked outside
+                if (currentOpenPopoverId) {
+                    const activePopover = document.getElementById('courier-res-' + currentOpenPopoverId);
+                    const activeWrapper = activePopover ? activePopover.closest('.courier-wrapper') : null;
+                    if (activeWrapper && !activeWrapper.contains(event.target)) {
+                        closeCourierPopup(currentOpenPopoverId);
+                    }
                 }
             });
             document.addEventListener('keydown', function(e) {
@@ -915,7 +924,7 @@
                             <span class="copy-icon" onclick="copyToClipboard('${safeCopyPayload}')" title="Copy Details">📋</span>
                             
                             <span class="courier-wrapper">
-                                <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Pathao Check</button>
+                                <button class="btn-check-cust" onclick="checkCourierDetails(this, '${saved.phone}', 'courier-res-${id}', '${id}')">Check</button>
                                 <div id="courier-res-${id}" class="courier-popover"></div>
                             </span>
                         </div>
@@ -1033,6 +1042,77 @@
                 const res = await fetch(`${COURIER_API_URL}?phone=${encodeURIComponent(phone)}`);
                 const data = await res.json();
                 
+                // Fetch Last 90 Days History Data
+                let historyHtml = '';
+                try {
+                    const trackRes = await fetch(`https://all-deliveries-overview-backend.onrender.com/api/track/${encodeURIComponent(phone)}`);
+                    const trackData = await trackRes.json();
+                    
+                    if (trackData.status === 'success' && trackData.parcel_info && trackData.parcel_info.length > 0) {
+                        let merchants = {};
+                        let tDel = 0, tRet = 0, tPart = 0;
+                        
+                        trackData.parcel_info.forEach(p => {
+                            let m = p.source_merchant || 'Unknown';
+                            if(!merchants[m]) merchants[m] = { del: 0, ret: 0, part: 0 };
+                            
+                            let s = (p.order_status || '').toLowerCase();
+                            if(s === 'delivered') {
+                                merchants[m].del++; tDel++;
+                            } else if(s.includes('return')) {
+                                merchants[m].ret++; tRet++;
+                            } else if(s.includes('partial')) {
+                                merchants[m].part++; tPart++;
+                            }
+                        });
+                        
+                        historyHtml = `
+                        <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #008060; margin-bottom: 6px;">Last 90 Days History</div>
+                            <table style="width: 100%; font-size: 11px; border-collapse: collapse; text-align: center;">
+                                <thead>
+                                    <tr style="background: #f9f9f9; color: #555;">
+                                        <th style="padding: 4px; text-align: left; border: 1px solid #eee;">Merchant</th>
+                                        <th style="padding: 4px; border: 1px solid #eee;">Delivered</th>
+                                        <th style="padding: 4px; border: 1px solid #eee;">Return</th>
+                                        <th style="padding: 4px; border: 1px solid #eee;">Partial</th>
+                                    </tr>
+                                </thead>
+                                <tbody>`;
+                        
+                        for (let m in merchants) {
+                            historyHtml += `
+                                    <tr>
+                                        <td style="padding: 4px; text-align: left; border: 1px solid #eee; font-weight: 600;">${m}</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #1b5e20; font-weight: bold;">${merchants[m].del}</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #b71c1c; font-weight: bold;">${merchants[m].ret}</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #f57f17; font-weight: bold;">${merchants[m].part}</td>
+                                    </tr>`;
+                        }
+                        
+                        historyHtml += `
+                                    <tr style="background: __HISTORY_BG__; font-weight: 800;">
+                                        <td style="padding: 4px; text-align: left; border: 1px solid #eee;">Total</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #1b5e20; font-weight: 800; font-size: 13px;">${tDel}</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #b71c1c; font-weight: 800; font-size: 13px;">${tRet}</td>
+                                        <td style="padding: 4px; border: 1px solid #eee; color: #f57f17; font-weight: 800; font-size: 13px;">${tPart}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>`;
+                    } else {
+                        historyHtml = `
+                        <div style="margin-top: 12px; border-top: 1px solid #eee; padding-top: 8px;">
+                            <div style="font-size: 12px; font-weight: 700; color: #008060; margin-bottom: 6px;">Last 90 Days History</div>
+                            <div style="text-align:center; padding: 10px; font-size: 13px; color: #d82c0d; font-weight: bold; background: #fff5f5; border-radius: 4px; border: 1px dashed #d82c0d;">
+                                First Time Punched From My Store
+                            </div>
+                        </div>`;
+                    }
+                } catch(e) {
+                    console.log("Error fetching 90 days history", e);
+                }
+
                 if (data.success) {
                     const rootData = data.raw.data || {};
                     const customerData = rootData.customer || {};
@@ -1076,7 +1156,9 @@
                         <div class="p-stat-box p-rating-box" style="background:${ratingBg}; border-color:${ratingColor}30;">
                              <span style="font-size:12px;">⭐</span> <span class="p-stat-val" style="color:${ratingColor}; font-size:12px;">${ratingText}</span>
                         </div>
-                    </div>`;
+                    </div>
+                    ${historyHtml.replace('__HISTORY_BG__', ratingBg)}
+                    `;
                     
                     container.innerHTML = html;
                 } else {
@@ -1087,7 +1169,8 @@
                         </div>
                         <div style="text-align:center; padding:10px; font-size:12px; color:#d82c0d;">
                             No data found for this number.
-                        </div>`;
+                        </div>
+                        ${historyHtml.replace('__HISTORY_BG__', '#f1f1f1')}`;
                 }
                 
             } catch(e) {
