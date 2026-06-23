@@ -796,12 +796,15 @@
                         s = "Paid"; 
                         saved.status = "Paid"; // Update local cache
                         fetch(`${SCRIPT_URL}?action=updateSheetOrder&oID=${id}&type=status&value=Paid`).catch(e=>console.log(e));
+                        
+                        let currentFilter = document.getElementById('statusFilter').value;
+                        if (currentFilter === 'courier') return;
                     }
 
-                    let sClass = s.toLowerCase().includes('product entry') ? 'status-product-entry' : 
-                                 s.toLowerCase().includes('courier') ? 'status-courier' :
-                                 s.toLowerCase().includes('void') ? 'status-void' : 
-                                 s.toLowerCase().includes('paid') ? 'status-paid' : 'status-pending';
+                    let sClass = s.toLowerCase().includes('void') ? 'status-void' : 
+                                 s.toLowerCase().includes('paid') ? 'status-paid' :
+                                 s.toLowerCase().includes('courier') ? 'status-courier' : 
+                                 s.toLowerCase().includes('product entry') ? 'status-product-entry' : 'status-pending';
                     statusBadge = `<span class="status-badge ${sClass} clickable" onclick="openStatusModal('${id}', '${s}')">${s}</span>`;
                     if(s.toLowerCase().includes('void')) isOrderVoid = true;
                 } else {
