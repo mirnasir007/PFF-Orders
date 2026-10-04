@@ -252,10 +252,36 @@
             .courier-wrapper { width: 100%; margin-left: 0; }
             .courier-popover { width: 100%; left: 0; box-sizing: border-box; } 
         }
+
+        #loginScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg); display: flex; justify-content: center; align-items: center;
+            z-index: 9999; flex-direction: column;
+        }
+        .login-box {
+            background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center; width: 300px;
+        }
+        .login-box input {
+            width: 100%; box-sizing: border-box; padding: 10px; margin: 15px 0;
+            border: 1px solid #babfc3; border-radius: 4px; font-size: 16px; text-align: center;
+        }
+        .login-box button { width: 100%; padding: 10px; font-size: 16px; }
+        #loginError { color: #d82c0d; font-size: 13px; font-weight: 600; margin-top: 10px; display: none; }
+        #mainApp { display: none; width: 100%; height: 100%; }
     </style>
 </head>
 <body>
-    <div class="zoom-container">
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2 style="margin-top: 0; color: var(--primary);">System Login</h2>
+            <input type="password" id="appPassword" placeholder="Enter Password" onkeypress="if(event.key === 'Enter') verifyLogin()">
+            <button class="btn" id="btnLogin" onclick="verifyLogin()">Login</button>
+            <div id="loginError">Incorrect Password!</div>
+        </div>
+    </div>
+
+    <div id="mainApp" class="zoom-container">
         <div class="main">
             <div class="loading-bar-container">
                 <div class="loading-bar" id="loadingBar"></div>
@@ -285,6 +311,7 @@
                     <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
                     <div id="entryAmountDisplay" class="entry-amount-display">Entry Amount: 0</div>
                     <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
+                    <button class="btn btn-secondary" style="margin-left: 5px;" onclick="openPasswordModal()">Change Password</button>
                 </div>
             </div>
 
@@ -463,6 +490,18 @@
         </div>
     </div>
 
+    <div id="passwordModal" class="modal" style="z-index: 1500;">
+        <div class="modal-box">
+            <span class="modal-close" onclick="closeModal('passwordModal')">&times;</span>
+            <h3 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Change Password</h3>
+            <div class="form-group"><label>Old Password</label><input type="password" id="oldPassInput"></div>
+            <div class="form-group"><label>New Password</label><input type="password" id="newPassInput"></div>
+            <div style="text-align:right; margin-top:15px;">
+                <button class="btn" id="btnChangePass" onclick="submitPasswordChange()">Change</button>
+            </div>
+        </div>
+    </div>
+
     <div id="globalStockModal" class="modal" style="z-index: 2500;" onclick="if(event.target === this) closeModal('globalStockModal')">
         <div class="modal-box" style="width: 350px; max-width: 95%;">
             <span class="modal-close" onclick="closeModal('globalStockModal')">&times;</span>
@@ -517,17 +556,20 @@
         // --- GLOBAL STOCK API & STORES ---
         const STOCK_GAS_URL = "https://pff-orders-backend.onrender.com/api"; 
 
-        // --- SECURITY: AUTO ADD API KEY TO ALL BACKEND REQUESTS ---
-        const API_KEY = "pff_secure_pass_by_nasir_61983987654";
+        // --- SECURITY: AUTO ADD PASSWORD TO ALL BACKEND REQUESTS ---
         const originalFetch = window.fetch;
         window.fetch = async function() {
             let [resource, config] = arguments;
             if (typeof resource === 'string' && resource.includes('pff-orders-backend.onrender.com')) {
                 config = config || {};
                 config.headers = config.headers || {};
-                config.headers['x-api-key'] = API_KEY;
+                config.headers['x-api-key'] = localStorage.getItem('app_password') || '';
             }
-            return originalFetch(resource, config);
+            const response = await originalFetch(resource, config);
+            if (response.status === 401) {
+                forceLogout();
+            }
+            return response;
         };
 
         const stockStores = [
@@ -562,10 +604,55 @@
         let lastKnownOrderId = null; 
         const notificationSound = new Audio('https://cdn.shopify.com/s/files/1/0665/2333/2855/files/bell-ring.mp3'); 
 
-        window.onload = function() {
+        function forceLogout() {
+            localStorage.removeItem('app_password');
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('loginError').innerText = "Session expired or wrong password!";
+        }
+
+        async function verifyLogin() {
+            let pass = document.getElementById('appPassword').value;
+            if (!pass) return;
+            let btn = document.getElementById('btnLogin');
+            btn.innerText = "Checking...";
+            btn.disabled = true;
+            
+            localStorage.setItem('app_password', pass);
+            
+            try {
+                let res = await fetch(SCRIPT_URL + "?action=getOrders&limit=1");
+                if (res.status === 200) {
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('mainApp').style.display = 'flex';
+                    document.getElementById('loginError').style.display = 'none';
+                    initApp();
+                } else {
+                    forceLogout();
+                }
+            } catch (e) {
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('loginError').innerText = "Connection error!";
+                localStorage.removeItem('app_password');
+            } finally {
+                btn.innerText = "Login";
+                btn.disabled = false;
+            }
+        }
+
+        function initApp() {
             applyFilters();
-            requestNotificationPermission(); // Ask user for popup permission
-            startSSEConnection(); // Start real-time connection
+            requestNotificationPermission(); 
+            startSSEConnection(); 
+        }
+
+        window.onload = function() {
+            if (localStorage.getItem('app_password')) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainApp').style.display = 'flex';
+                initApp();
+            }
             
             document.getElementById('mobileMenuBtn').addEventListener('click', function() {
                 document.getElementById('filterOptions').classList.toggle('show');
@@ -618,7 +705,7 @@
         }
 
         function startSSEConnection() {
-            const streamUrl = SCRIPT_URL.replace('/api', '/stream') + "?api_key=" + API_KEY;
+            const streamUrl = SCRIPT_URL.replace('/api', '/stream') + "?api_key=" + (localStorage.getItem('app_password') || '');
             const eventSource = new EventSource(streamUrl);
 
             eventSource.onmessage = function(event) {
@@ -1954,6 +2041,40 @@ function updatePreviewContent() {
                 if(data.status === 'success') { showToast("Customer info updated"); closeModal('editCustomerModal'); applyFilters(); } 
                 else { showToast("Error updating info"); }
             } catch(e) { showToast("Connection Error"); } finally { btn.innerText = "Save Changes"; }
+        }
+
+        function openPasswordModal() {
+            document.getElementById('oldPassInput').value = '';
+            document.getElementById('newPassInput').value = '';
+            document.getElementById('passwordModal').style.display = 'flex';
+        }
+
+        async function submitPasswordChange() {
+            let oldPass = document.getElementById('oldPassInput').value;
+            let newPass = document.getElementById('newPassInput').value;
+            if(!oldPass || !newPass) { showToast("Fill all fields"); return; }
+            let btn = document.getElementById('btnChangePass');
+            btn.innerText = "Saving..."; btn.disabled = true;
+
+            try {
+                let res = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'changePassword', oldPass: oldPass, newPass: newPass })
+                });
+                let data = await res.json();
+                if(data.success) {
+                    showToast(data.message);
+                    localStorage.setItem('app_password', newPass);
+                    closeModal('passwordModal');
+                } else {
+                    showToast(data.message);
+                }
+            } catch(e) {
+                showToast("Connection Error");
+            } finally {
+                btn.innerText = "Change"; btn.disabled = false;
+            }
         }
     </script>
 </body>
