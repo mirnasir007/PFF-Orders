@@ -516,6 +516,20 @@
 
         // --- GLOBAL STOCK API & STORES ---
         const STOCK_GAS_URL = "https://pff-orders-backend.onrender.com/api"; 
+
+        // --- SECURITY: AUTO ADD API KEY TO ALL BACKEND REQUESTS ---
+        const API_KEY = "pff_secure_pass_by_nasir_61983987654";
+        const originalFetch = window.fetch;
+        window.fetch = async function() {
+            let [resource, config] = arguments;
+            if (typeof resource === 'string' && resource.includes('pff-orders-backend.onrender.com')) {
+                config = config || {};
+                config.headers = config.headers || {};
+                config.headers['x-api-key'] = API_KEY;
+            }
+            return originalFetch(resource, config);
+        };
+
         const stockStores = [
           {code: "100010001", name: "PFF PREMIUM_WH"},
           {code: "100010004", name: "PFF PREMIUM E-STORE"},
@@ -604,7 +618,7 @@
         }
 
         function startSSEConnection() {
-            const streamUrl = SCRIPT_URL.replace('/api', '/stream');
+            const streamUrl = SCRIPT_URL.replace('/api', '/stream') + "?api_key=" + API_KEY;
             const eventSource = new EventSource(streamUrl);
 
             eventSource.onmessage = function(event) {
