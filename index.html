@@ -316,7 +316,7 @@
                     
                     <!-- 3-Dot Menu -->
                     <div style="position: relative; margin-left: auto;">
-                        <button class="btn btn-secondary" onclick="document.getElementById('settingsDropdown').style.display = document.getElementById('settingsDropdown').style.display === 'block' ? 'none' : 'block'" style="padding: 5px 10px; font-size: 18px; border-radius: 4px;">⋮</button>
+                        <button onclick="document.getElementById('settingsDropdown').style.display = document.getElementById('settingsDropdown').style.display === 'block' ? 'none' : 'block'" style="background: transparent; border: none; color: #333; padding: 5px 10px; font-size: 24px; font-weight: bold; cursor: pointer; outline: none;">⋮</button>
                         <div id="settingsDropdown" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #e1e3e5; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; z-index: 200; width: 150px; text-align: left; margin-top: 5px;">
                             <div onclick="openPasswordModal(); document.getElementById('settingsDropdown').style.display='none'" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; font-weight: 600;">Change Password</div>
                             <div onclick="forceLogout(); document.getElementById('settingsDropdown').style.display='none'" style="padding: 10px; cursor: pointer; color: #d82c0d; font-size: 13px; font-weight: 600;">Logout</div>
@@ -577,7 +577,12 @@
             }
             const response = await originalFetch(resource, config);
             if (response.status === 401) {
-                forceLogout("Session expired or wrong password!");
+                // Jeno manual logout korar por auto error message na ashe
+                if (localStorage.getItem('app_password')) {
+                    forceLogout("Session expired or wrong password!");
+                } else {
+                    forceLogout();
+                }
             }
             return response;
         };
