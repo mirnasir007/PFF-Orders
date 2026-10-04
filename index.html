@@ -255,13 +255,6 @@
     </style>
 </head>
 <body>
-    <div id="authModal" class="modal" style="display: flex; background: #202223; z-index: 9999; flex-direction: column;">
-        <div class="modal-box" style="width: 300px; text-align: center; padding: 30px;">
-            <h3 style="margin-top: 0; margin-bottom: 20px; color: #008060;">System Locked</h3>
-            <input type="password" id="secretKeyInput" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" placeholder="Enter App Secret Key" onkeypress="if(event.key === 'Enter') verifyKey()">
-            <button class="btn" onclick="verifyKey()" style="width: 100%;">Unlock</button>
-        </div>
-    </div>
     <div class="zoom-container">
         <div class="main">
             <div class="loading-bar-container">
@@ -515,29 +508,6 @@
     </div>
 
     <script>
-        const originalFetch = window.fetch;
-        window.fetch = async function() {
-            let [resource, config] = arguments;
-            const secret = sessionStorage.getItem('pff_secret_key');
-            if (typeof resource === 'string' && resource.includes('pff-orders-backend.onrender.com')) {
-                if (!config) config = {};
-                if (!config.headers) config.headers = {};
-                if (secret) config.headers['x-api-key'] = secret;
-            }
-            return originalFetch(resource, config);
-        };
-
-        function verifyKey() {
-            const key = document.getElementById('secretKeyInput').value;
-            if(key) {
-                sessionStorage.setItem('pff_secret_key', key);
-                document.getElementById('authModal').style.display = 'none';
-                applyFilters();
-                requestNotificationPermission();
-                startSSEConnection();
-            }
-        }
-
         const SCRIPT_URL = "https://pff-orders-backend.onrender.com/api"; 
         
         // --- COURIER CHECKER API URL ---
@@ -579,14 +549,9 @@
         const notificationSound = new Audio('https://cdn.shopify.com/s/files/1/0665/2333/2855/files/bell-ring.mp3'); 
 
         window.onload = function() {
-            if(!sessionStorage.getItem('pff_secret_key')) {
-                document.getElementById('authModal').style.display = 'flex';
-            } else {
-                document.getElementById('authModal').style.display = 'none';
-                applyFilters();
-                requestNotificationPermission();
-                startSSEConnection();
-            }
+            applyFilters();
+            requestNotificationPermission(); // Ask user for popup permission
+            startSSEConnection(); // Start real-time connection
             
             document.getElementById('mobileMenuBtn').addEventListener('click', function() {
                 document.getElementById('filterOptions').classList.toggle('show');
@@ -639,8 +604,7 @@
         }
 
         function startSSEConnection() {
-            const secret = sessionStorage.getItem('pff_secret_key') || '';
-            const streamUrl = SCRIPT_URL.replace('/api', '/stream') + `?secret_key=${encodeURIComponent(secret)}`;
+            const streamUrl = SCRIPT_URL.replace('/api', '/stream');
             const eventSource = new EventSource(streamUrl);
 
             eventSource.onmessage = function(event) {
