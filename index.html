@@ -295,7 +295,7 @@
                 <div style="font-size: 20px; font-weight: 700; color: #008060; margin-right: 15px; white-space: nowrap;">📦 Orders</div>
                 
                 <div style="display: flex; gap: 5px; align-items: center;">     <input type="text" id="searchId" placeholder="Order ID / Name / Phone" style="width: 200px;"             onkeypress="if(event.key === 'Enter') applyFilters()"             oninput="if(this.value.trim() === '') applyFilters()">     <button class="btn" onclick="applyFilters()">Search</button> </div>
-                <div class="filter-options" id="filterOptions">
+                <div class="filter-options" id="filterOptions" style="position: relative;">
                     <select id="statusFilter">
                         <option value="any" selected>Any Status</option>
                         <option value="pending">Pending</option>
@@ -313,7 +313,15 @@
                     <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
                     <div id="entryAmountDisplay" class="entry-amount-display">Entry Amount: 0</div>
                     <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
-                    <button class="btn btn-secondary" style="margin-left: 5px;" onclick="openPasswordModal()">Change Password</button>
+                    
+                    <!-- 3-Dot Menu -->
+                    <div style="position: relative; margin-left: 10px;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('settingsDropdown').style.display = document.getElementById('settingsDropdown').style.display === 'block' ? 'none' : 'block'" style="padding: 5px 10px; font-size: 18px; border-radius: 4px;">⋮</button>
+                        <div id="settingsDropdown" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #e1e3e5; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; z-index: 200; width: 150px; text-align: left; margin-top: 5px;">
+                            <div onclick="openPasswordModal(); document.getElementById('settingsDropdown').style.display='none'" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; font-weight: 600;">Change Password</div>
+                            <div onclick="forceLogout(); document.getElementById('settingsDropdown').style.display='none'" style="padding: 10px; cursor: pointer; color: #d82c0d; font-size: 13px; font-weight: 600;">Logout</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2066,9 +2074,11 @@ function updatePreviewContent() {
                 });
                 let data = await res.json();
                 if(data.success) {
-                    showToast(data.message);
-                    localStorage.setItem('app_password', newPass);
                     closeModal('passwordModal');
+                    showToast("Password Changed. Logging out...");
+                    setTimeout(() => {
+                        forceLogout();
+                    }, 1500);
                 } else {
                     showToast(data.message);
                 }
@@ -2078,6 +2088,14 @@ function updatePreviewContent() {
                 btn.innerText = "Change"; btn.disabled = false;
             }
         }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('settingsDropdown');
+            if (dropdown && event.target.innerText !== '⋮') {
+                dropdown.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>
