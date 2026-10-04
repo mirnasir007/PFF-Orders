@@ -315,7 +315,7 @@
                     <button class="btn btn-export" onclick="downloadExcel()">⬇️ Excel</button>
                     
                     <!-- 3-Dot Menu -->
-                    <div style="position: relative; margin-left: 10px;">
+                    <div style="position: relative; margin-left: auto;">
                         <button class="btn btn-secondary" onclick="document.getElementById('settingsDropdown').style.display = document.getElementById('settingsDropdown').style.display === 'block' ? 'none' : 'block'" style="padding: 5px 10px; font-size: 18px; border-radius: 4px;">⋮</button>
                         <div id="settingsDropdown" style="display: none; position: absolute; right: 0; top: 100%; background: white; border: 1px solid #e1e3e5; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 4px; z-index: 200; width: 150px; text-align: left; margin-top: 5px;">
                             <div onclick="openPasswordModal(); document.getElementById('settingsDropdown').style.display='none'" style="padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 13px; font-weight: 600;">Change Password</div>
@@ -577,7 +577,7 @@
             }
             const response = await originalFetch(resource, config);
             if (response.status === 401) {
-                forceLogout();
+                forceLogout("Session expired or wrong password!");
             }
             return response;
         };
@@ -614,12 +614,18 @@
         let lastKnownOrderId = null; 
         const notificationSound = new Audio('https://cdn.shopify.com/s/files/1/0665/2333/2855/files/bell-ring.mp3'); 
 
-        function forceLogout() {
+        function forceLogout(errorMessage = null) {
             localStorage.removeItem('app_password');
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('loginError').style.display = 'block';
-            document.getElementById('loginError').innerText = "Session expired or wrong password!";
+            
+            if (errorMessage) {
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('loginError').innerText = errorMessage;
+            } else {
+                document.getElementById('loginError').style.display = 'none';
+                document.getElementById('appPassword').value = '';
+            }
         }
 
         async function verifyLogin() {
@@ -639,7 +645,7 @@
                     document.getElementById('loginError').style.display = 'none';
                     initApp();
                 } else {
-                    forceLogout();
+                    forceLogout("Session expired or wrong password!");
                 }
             } catch (e) {
                 document.getElementById('loginError').style.display = 'block';
